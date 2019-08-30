@@ -3,6 +3,8 @@ import Router from 'vue-router'
 import Home from './views/Home.vue'
 import Signup from "./views/Signup.vue";
 import Signin from "./views/Signin.vue";
+import Exchanges from "./views/Exchanges.vue";
+import Operations from "./views/Operations.vue";
 
 Vue.use(Router)
 
@@ -18,7 +20,7 @@ export default new Router({
         {
           path: "/operations",
           name: "operations",
-          // component: Operations
+          component: Operations
         },
         {
           path: "/profile",
@@ -28,7 +30,7 @@ export default new Router({
         {
           path: "/exchanges",
           name: "exchanges",
-          // component: Profile
+          component: Exchanges
         }
       ]
     },

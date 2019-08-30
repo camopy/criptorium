@@ -9,6 +9,15 @@ export default {
   mutations: {
     setUser(state, payload) {
       state.user = payload;
+    },
+    setExchanges(state, payload) {
+      state.user.exchanges = payload;
+    },
+    setOperations(state, payload) {
+      state.user.operations = payload;
+    },
+    setLastOperations(state, payload) {
+      state.user.lastOperations = payload;
     }
   },
   actions: {
@@ -64,7 +73,10 @@ export default {
                 email: payload.email,
                 cpf: payload.cpf,
                 birthday: payload.birthday,
-                dateCreated: moment().toISOString()
+                dateCreated: moment().toISOString(),
+                exchanges: [],
+              operations: [],
+              lastOperations: []
               };
               commit("setUser", newUser);
 
@@ -107,9 +119,11 @@ export default {
         });
     },
     logout({ commit }) {
+      this.unsubscribeExchangesListener();
+      this.unsubscribeOperationsListener();
+      this.unsubscribeLastOperationsListener();
       firebase.auth().signOut();
       commit("setUser", null);
-      commit("setLoading", false);
     },
     fetchUserData({ commit }, payload) {
       commit("setLoading", true);
@@ -124,138 +138,116 @@ export default {
               email: doc.data().email,
               cpf: doc.data().cpf,
               birthday: doc.data().birthday,
-              dateCreated: doc.data().dateCreated
+              dateCreated: doc.data().dateCreated,
+              exchanges: [],
+              operations: [],
+              lastOperations: []
             };
             commit("setUser", updatedUser);
+            commit("setLoading", false);
             return updatedUser;
           } else {
             return Promise.reject(new Error("Usuário não encontrado"));
           }
         })
-        // .then(updatedUser => {
-        //   let promises = [];
-        //   this.unsubscribeUserTimelineListener = db
-        //     .collection("users")
-        //     .doc(updatedUser.id)
-        //     .collection("timeline")
-        //     .orderBy("inputDate", "desc")
-        //     .onSnapshot(
-        //       querySnapshot => {
-        //         let timeline = querySnapshot.docs.map(function(timeline) {
-        //           return timeline.data();
-        //         });
-        //         updatedUser.timeline = timeline;
-        //         commit("setUser", updatedUser);
-        //         return timeline;
-        //       },
-        //       function(error) {
-        //         console.log("Error getting user timeline:", error);
-        //         commit("setLoading", false);
-        //         return Promise.reject(error);
-        //       }
-        //     );
-        //   promises.push(this.unsubscribeUserTimelineListener);
+        .then(updatedUser => {
+          let promises = [];
 
-        //   if (updatedUser.accountType === "patient") {
-        //     this.unsubscribePendingInvitesListener = db
-        //       .collection("pending_invites")
-        //       .where("patientId", "==", updatedUser.id)
-        //       .onSnapshot(
-        //         querySnapshot => {
-        //           let pendingInvites = querySnapshot.docs.map(function(
-        //             pending_invite
-        //           ) {
-        //             return pending_invite.data();
-        //           });
-        //           updatedUser.pendingInvites = pendingInvites;
-        //           commit("setUser", updatedUser);
-        //           return pendingInvites;
-        //         },
-        //         function(error) {
-        //           console.log("Error getting pending_invites:", error);
-        //           commit("setLoading", false);
-        //           return Promise.reject(error);
-        //         }
-        //       );
+          this.unsubscribeExchangesListener = db
+            .collection("users")
+            .doc(updatedUser.id)
+            .collection("exchanges")
+            .onSnapshot(
+              querySnapshot => {
+                let exchanges = querySnapshot.docs.map(function(exchange) {
+                  return {...exchange.data(), id: exchange.id};
+                });
+                // updatedUser.exchanges = exchanges;
+                commit("setExchanges", exchanges);
+                return exchanges;
+              },
+              function(error) {
+                console.log("Error getting user exchanges:", error);
+                commit("setLoading", false);
+                return Promise.reject(error);
+              }
+            );
+          promises.push(this.unsubscribeExchangesListener);
 
-        //     promises.push(this.unsubscribePendingInvitesListener);
+          this.unsubscribeOperationsListener = db
+            .collection("users")
+            .doc(updatedUser.id)
+            .collection("operations")
+            .onSnapshot(
+              querySnapshot => {
+                let operations = querySnapshot.docs.map(function(operation) {
+                  return {...operation.data(), id: operation.id, timef: moment(operation.data().time).format("L")};
+                });
+                // updatedUser.operations = operations;
+                commit("setOperations", operations);
+                return operations;
+              },
+              function(error) {
+                console.log("Error getting user operations:", error);
+                commit("setLoading", false);
+                return Promise.reject(error);
+              }
+            );
+          promises.push(this.unsubscribeOperationsListener);
 
-        //     this.unsubscribeDoctorPatientListener = db
-        //       .collection("doctor_patient")
-        //       .where("patientId", "==", updatedUser.id)
-        //       .onSnapshot(
-        //         querySnapshot => {
-        //           let doctors = querySnapshot.docs.map(function(doctor) {
-        //             return doctor.data();
-        //           });
-        //           updatedUser.doctors = doctors;
-        //           commit("setUser", updatedUser);
-        //           return doctors;
-        //         },
-        //         function(error) {
-        //           console.log("Error getting doctor_patient:", error);
-        //           commit("setLoading", false);
-        //           return Promise.reject(error);
-        //         }
-        //       );
-        //     promises.push(this.unsubscribeDoctorPatientListener);
-        //   } else {
-        //     this.unsubscribePendingInvitesListener = db
-        //       .collection("pending_invites")
-        //       .where("doctorId", "==", updatedUser.id)
-        //       .onSnapshot(
-        //         querySnapshot => {
-        //           let pendingInvites = querySnapshot.docs.map(function(
-        //             pending_invite
-        //           ) {
-        //             return pending_invite.data();
-        //           });
-        //           updatedUser.pendingInvites = pendingInvites;
-        //           commit("setUser", updatedUser);
-        //           return pendingInvites;
-        //         },
-        //         function(error) {
-        //           console.log("Error getting pending_invites:", error);
-        //           commit("setLoading", false);
-        //           return Promise.reject(error);
-        //         }
-        //       );
-        //     promises.push(this.unsubscribePendingInvitesListener);
+          this.unsubscribeLastOperationsListener = db
+            .collection("users")
+            .doc(updatedUser.id)
+            .collection("lastOperations")
+            .onSnapshot(
+              querySnapshot => {
+                let lastOperations = [];
+                querySnapshot.docs.forEach(lastOperation => {
+                  lastOperations[lastOperation.id] = lastOperation.data();
+                });
+                // updatedUser.lastOperations = lastOperations;
+                commit("setLastOperations", lastOperations);
+                return lastOperations;
+              },
+              function(error) {
+                console.log("Error getting user lastOperations:", error);
+                commit("setLoading", false);
+                return Promise.reject(error);
+              }
+            );
+          promises.push(this.unsubscribeLastOperationsListener);
 
-        //     this.unsubscribeDoctorPatientListener = db
-        //       .collection("doctor_patient")
-        //       .where("doctorId", "==", updatedUser.id)
-        //       .onSnapshot(
-        //         querySnapshot => {
-        //           let patients = querySnapshot.docs.map(function(patient) {
-        //             return patient.data();
-        //           });
-        //           updatedUser.patients = patients;
-        //           commit("setUser", updatedUser);
-        //           return patients;
-        //         },
-        //         function(error) {
-        //           console.log("Error getting doctor_patient:", error);
-        //           commit("setLoading", false);
-        //           return Promise.reject(error);
-        //         }
-        //       );
-        //     promises.push(this.unsubscribeDoctorPatientListener);
-        //   }
-
-        //   Promise.all(promises)
-        //     .then(() => {
-        //       commit("setLoading", false);
-        //     })
-        //     .catch(error => {
-        //       commit("setLoading", false);
-        //       console.error("Error fetching data: ", error);
-        //     });
-        // })
+          Promise.all(promises)
+            .then(() => {
+              commit("setLoading", false);
+            })
+            .catch(error => {
+              commit("setLoading", false);
+              console.error("Error fetching data: ", error);
+            });
+        })
         .catch(function(error) {
           console.log("Error getting user:", error);
           commit("setLoading", false);
         });
+    },
+    addExchange({commit, getters}, payload) {
+      commit("setCreating", true);
+      let user = getters.user;
+
+      return db.collection("users")
+      .doc(user.id)
+      .collection("exchanges")
+      .doc()
+      .set(payload)
+      .then(function() {
+        commit("setCreating", false);
+        console.log("Exchange added");
+      })
+      .catch(function(error) {
+        commit("setCreating", false);
+        console.error("Error adding exchange: ", error);
+      });
     }
   },
   getters: {

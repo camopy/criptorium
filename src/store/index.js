@@ -1,14 +1,16 @@
 import Vue from "vue";
 import Vuex from "vuex";
 
-import user from "./user";
 import shared from "./shared";
+import user from "./user";
+import exchange from "./exchange";
 
 Vue.use(Vuex);
 
 export const store = new Vuex.Store({
   modules: {
+    shared: shared,
     user: user,
-    shared: shared
+    exchange: exchange
   }
 });
