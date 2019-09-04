@@ -15,6 +15,10 @@ service cloud.firestore {
       match /operations/{operation} {
         allow read, write: if request.auth.uid != null;
       }
+
+      match /lastOperations/{lastOperation} {
+        allow read, write: if request.auth.uid != null;
+      }
     }
   }
 }
