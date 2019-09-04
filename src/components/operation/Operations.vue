@@ -28,6 +28,7 @@ export default {
         align: "left",
         value: "symbol"
       },
+      { text: "Tipo", value: "operationType" },
       { text: "Quantidade", value: "qty" },
       { text: "Preço", value: "price" },
       { text: "Valor", value: "quoteQty" },

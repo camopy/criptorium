@@ -24,7 +24,7 @@ export default {
 
       axios
         .get(
-          'https://us-central1-cripto-rf-dev.cloudfunctions.net/syncExchangeOperations',
+          'https://us-central1-cripto-rf-dev.cloudfunctions.net/syncBinanceOperations',
           { params: keys }
         )
         .then((response) => {

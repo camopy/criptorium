@@ -181,7 +181,7 @@ export default {
             .onSnapshot(
               querySnapshot => {
                 let operations = querySnapshot.docs.map(function(operation) {
-                  return {...operation.data(), id: operation.id, timef: moment(operation.data().time).format("L")};
+                  return {...operation.data(), id: operation.id, operationType: operation.data().isBuyer === undefined ? '' : (operation.data().isBuyer === true ? 'Compra' : 'Venda'), timef: moment(operation.data().time).format("L")};
                 });
                 // updatedUser.operations = operations;
                 commit("setOperations", operations);
