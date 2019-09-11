@@ -23,7 +23,8 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
         let timeoutPromise = new Promise((resolve) =>
           setTimeout(() => {
             let symbol = symbolInfo.symbol;
-
+            let baseAsset = symbolInfo.baseAsset;
+            let quoteAsset = symbolInfo.quoteAsset;
 
             let tradeParams = { symbol: symbol, useServerTime: true };
             let lastOperation = lastOperations
@@ -37,13 +38,15 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
                 let lastTradeId = '';
                 trades.forEach((trade) => {
                   lastTradeId = trade.id;
-                  if(trade.time >= 1561950000000) {
+                  if (trade.time >= 1561950000000) {
                     let operationDoc = admin
                       .firestore()
                       .collection('users/' + req.query.userId + '/operations/')
                       .doc();
                     batch.set(operationDoc, {
                       ...trade,
+                      baseAsset: baseAsset,
+                      quoteAsset: quoteAsset,
                       exchange: 'binance',
                       type: 'trade'
                     });
@@ -115,9 +118,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             if (deposits.depositList.length > 0) {
               let lastOperation = admin
                 .firestore()
-                .collection(
-                  'users/' + req.query.userId + '/lastOperations/'
-                )
+                .collection('users/' + req.query.userId + '/lastOperations/')
                 .doc('binance');
               batch.set(
                 lastOperation,
@@ -176,9 +177,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             if (whitdraws.withdrawList.length > 0) {
               let lastOperation = admin
                 .firestore()
-                .collection(
-                  'users/' + req.query.userId + '/lastOperations/'
-                )
+                .collection('users/' + req.query.userId + '/lastOperations/')
                 .doc('binance');
               batch.set(
                 lastOperation,
@@ -217,5 +216,26 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
           });
       });
     });
+  });
+});
+
+exports.generateOperationsTextFile = functions.https.onRequest((req, res) => {
+  return cors(req, res, () => {
+    admin
+      .firestore()
+      .collection('users/' + req.query.userId + '/operations/')
+      .get()
+      .then(
+        querySnapshot => {
+          let operations = querySnapshot.docs.map(function(operation) {
+            return {...operation.data(), id: operation.id};
+          });
+          return res.status(200).send(operations);
+        },
+        function(error) {
+          console.log("Error getting user operations:", error);
+          return res.status(200).send(error);
+        }
+      );
   });
 });
