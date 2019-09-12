@@ -22,7 +22,7 @@ export default {
   data: () => ({
     headers: [
       { text: "Operação", value: "type" },
-      { text: "Exchange", value: "exchange" },
+      { text: "Exchange", value: "exchangeName" },
       {
         text: "Par",
         align: "left",
