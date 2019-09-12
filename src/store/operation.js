@@ -13,7 +13,7 @@ export default {
         date: payload.date
       };
 
-      axios
+      return axios
         .get(
           'https://us-central1-cripto-rf-dev.cloudfunctions.net/generateOperationsTextFile',
           { params: params }
