@@ -20,10 +20,10 @@ export default {
         )
         .then((response) => {
           console.log(response.data);
-          let blob = new Blob([JSON.stringify(response.data)], {
+          let blob = new Blob([JSON.stringify(response.data).replace(/[\[\]"]+/g,"").replace(/,/g, '\n')], {
             type: 'text/plain;charset=utf-8'
           });
-          saveAs(blob, payload.date + '.txt');
+          saveAs(blob, "Operacoes " + payload.date + '.txt');
           commit('setCreating', false);
         });
     }

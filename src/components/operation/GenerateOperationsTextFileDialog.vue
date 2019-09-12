@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="800px">
+  <v-dialog v-model="dialog" width="300px">
     <v-card>
       <v-card-title class="grey lighten-4 py-4 title">Gerar arquivo TXT</v-card-title>
       <v-flex xs12>
@@ -33,7 +33,7 @@
                     v-model="date"
                     full-width
                     type="month"
-                    min="2019-08"
+                    min="2019-07"
                     :max="new Date().toISOString().substr(0, 10)"
                     no-title
                     :show-current='this.$moment().format("YYYY-MM")'
