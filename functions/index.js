@@ -32,7 +32,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             let baseAsset = symbolInfo.baseAsset;
             let quoteAsset = symbolInfo.quoteAsset;
 
-            let tradeParams = { symbol: symbol, useServerTime: true };
+            let tradeParams = { symbol: symbol, useServerTime: true, recvWindow: 10000000 };
             let lastOperation = lastOperations
               ? lastOperations[symbol] || false
               : false;
@@ -90,7 +90,8 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
       Promise.all(timeoutPromises).then(() => {
         let depositParams = {
           startTime: 1561950000000,
-          useServerTime: true
+          useServerTime: true,
+          recvWindow: 10000000
         };
         let lastDeposit = lastOperations
           ? lastOperations.deposit || false
@@ -151,7 +152,8 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
 
         let whitdrawParams = {
           startTime: 1561950000000,
-          useServerTime: true
+          useServerTime: true,
+          recvWindow: 10000000
         };
         let lastWhitdraw = lastOperations
           ? lastOperations.whitdraw || false
