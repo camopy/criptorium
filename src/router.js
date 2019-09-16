@@ -5,6 +5,7 @@ import Signup from "./views/Signup.vue";
 import Signin from "./views/Signin.vue";
 import Exchanges from "./views/Exchanges.vue";
 import Operations from "./views/Operations.vue";
+import UserInfo from "./views/UserInfo.vue";
 
 Vue.use(Router)
 
@@ -25,7 +26,7 @@ export default new Router({
         {
           path: "/profile",
           name: "profile",
-          // component: Profile
+          component: UserInfo
         },
         {
           path: "/exchanges",
