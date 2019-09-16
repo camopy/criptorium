@@ -15,7 +15,7 @@
                   <v-card-title primary-title>
                     <div>
                       <h2 class="mb-0">{{ exchange.name }}</h2>
-                      Última sincronização: {{ formatDate(exchange.lastSync) }}
+                      Última sincronização: {{ formatDate(exchange.lastSync, "x") }}
                     </div>
                   </v-card-title>
                   <v-card-actions>
@@ -50,11 +50,10 @@ export default {
   },
   methods: {
     onSync(exchange) {
-      this.$store
-          .dispatch("syncExchangeOperations", exchange)
-          // .then(() => {
-          //   this.dialog = false;
-          // });
+      switch (exchange.exchangeId) {
+        case "binance":
+          return this.$store.dispatch("syncBinanceOperations", exchange);
+      }
     }
   }
 };

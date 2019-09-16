@@ -122,10 +122,11 @@ export default {
       this.unsubscribeExchangesListener();
       this.unsubscribeOperationsListener();
       this.unsubscribeLastOperationsListener();
+      this.unsubscribeSystemExchangesListener();
       firebase.auth().signOut();
       commit("setUser", null);
     },
-    fetchUserData({ commit }, payload) {
+    fetchUserData({ commit, dispatch }, payload) {
       commit("setLoading", true);
       db.collection("users")
         .doc(payload.uid)
@@ -152,6 +153,8 @@ export default {
         })
         .then(updatedUser => {
           let promises = [];
+
+          this.unsubscribeSystemExchangesListener = dispatch("loadSystemExchanges");
 
           this.unsubscribeExchangesListener = db
             .collection("users")

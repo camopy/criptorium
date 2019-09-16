@@ -1,7 +1,11 @@
 export default {
   methods: {
-    formatDate(date) {
+    formatDate(date, currentFormat) {
       if (!date) return null;
+
+      if(currentFormat){
+        return this.$moment(date, currentFormat).format("L");
+      }
 
       return this.$moment(date).format("L");
     },

@@ -13,13 +13,20 @@ export default {
     }
   },
   actions: {
-    syncExchangeOperations({ commit, getters }, payload) {
+    syncBinanceOperations({ commit, getters }, payload) {
       commit('setCreating', true);
+      let systemExchange = getters.systemExchanges.find(exchange => {
+        return exchange.id === payload.exchangeId;
+      })
       let keys = {
         userId: getters.user.id,
         apiKey: payload.apiKey,
         privateKey: payload.privateKey,
-        lastOperations: getters.user.lastOperations.binance
+        lastOperations: getters.user.lastOperations.binance,
+        exchangeId: payload.id,
+        exchangeName: systemExchange.name,
+        exchangeUrl: systemExchange.url,
+        exchangeCountryCode: systemExchange.countryCode
       };
 
       axios
