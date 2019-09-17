@@ -19,6 +19,9 @@ export default {
     },
     setLastOperations(state, payload) {
       state.user.lastOperations = payload;
+    },
+    setMoreOperations(state, payload) {
+      state.user.operations.push(...payload);
     }
   },
   actions: {
@@ -182,11 +185,15 @@ export default {
             .collection("users")
             .doc(updatedUser.id)
             .collection("operations")
+            .orderBy("time", "desc")
+            .limit(15)
             .onSnapshot(
               querySnapshot => {
                 let operations = querySnapshot.docs.map(function(operation) {
                   return {...operation.data(), id: operation.id};
                 });
+                let lastReturnedOperation = querySnapshot.docs[querySnapshot.docs.length-1];
+                commit("setLastReturnedOperation", lastReturnedOperation);
                 // updatedUser.operations = operations;
                 commit("setOperations", operations);
                 return operations;

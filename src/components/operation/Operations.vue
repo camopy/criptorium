@@ -1,49 +1,57 @@
 <template>
-  <v-container fluid>
+  <v-container id="scroll-target" fluid>
     <v-layout v-if="user">
       <v-flex xs12>
-        <v-data-table
-          :loading="loading"
-          loading-text="Carregando operações"
-          :headers="headers"
-          :items="user.operations"
-          item-key="id"
-          :sort-by="['time']"
-          :sort-desc="[true]"
-          show-expand
-          :expanded.sync="expanded"
-          class="elevation-1"
-        >
-          <template v-slot:expanded-item="{ item }">
-            <td :colspan="headers.length + 1">
-              <v-layout row v-if="item.type === 'trade'">
-                <v-flex xs12>Moeda de taxa: {{item.commissionAsset}}</v-flex>
-                <v-flex xs12>Valor da taxa: {{item.commission}}</v-flex>
-              </v-layout>
-              <v-layout row v-if="item.type === 'whitdraw'">
-                <v-flex xs12>Endereço: {{item.address}}</v-flex>
-                <v-flex xs12>ID da transação: {{item.txId}}</v-flex>
-                <v-flex xs12>Taxa da transação: {{item.transactionFee}}</v-flex>
-              </v-layout>
-              <v-layout row v-if="item.type === 'deposit'">
-                <v-flex xs12>Endereço: {{item.address}}</v-flex>
-                <v-flex xs12>ID da transação: {{item.txId}}</v-flex>
-              </v-layout>
-            </td>
-          </template>
-          <template v-slot:item.time="{ item }">{{formatDate(item.time)}}</template>
-          <template
-            v-slot:item.isBuyer="{ item }"
-          >{{item.isBuyer === undefined ? "" : (item.isBuyer === true ? 'Compra' : 'Venda')}}</template>
-          <template
-            v-slot:item.type="{ item }"
-          >{{item.type === "trade" ? "Trade" : (item.type === "whitdraw" ? 'Saque' : 'Depósito')}}</template>
-          <template v-slot:item.qty="{ item }">{{Number(item.qty).toFixed(8)}}</template>
-          <template v-slot:item.price="{ item }">{{item.price ? Number(item.price).toFixed(8) : ""}}</template>
-          <template
-            v-slot:item.quoteQty="{ item }"
-          >{{item.quoteQty ? Number(item.quoteQty).toFixed(8) : ""}}</template>
-        </v-data-table>
+        <v-row justify="center">
+          <v-expansion-panels popout multiple>
+            <v-expansion-panel v-for="operation in user.operations" :key="operation.id">
+              <v-expansion-panel-header>
+                <v-layout row>
+                  <v-flex xs6 sm2>{{formatDate(operation.time, "x")}}</v-flex>
+                  <v-flex xs6 sm2>{{operation.exchangeName}}</v-flex>
+                  <v-flex
+                    xs6
+                    sm2
+                  >{{operation.type === "trade" ? "Trade" : (operation.type === "whitdraw" ? 'Saque' : 'Depósito')}}</v-flex>
+                  <v-flex xs6 sm2>{{operation.symbol}}</v-flex>
+                  <v-flex
+                    xs6
+                    sm2
+                  >{{operation.isBuyer === undefined ? "" : (operation.isBuyer === true ? 'Compra' : 'Venda')}}</v-flex>
+                </v-layout>
+              </v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <v-layout v-if="operation.type==='trade'" row>
+                  <v-flex xs6>Criptoativo: {{operation.baseAsset}}</v-flex>
+                  <v-flex xs6>Quantidade: {{Number(operation.qty).toFixed(8)}}</v-flex>
+                  <v-flex xs6>Criptoativo de cotação: {{operation.quoteAsset}}</v-flex>
+                  <v-flex xs6>Preço: {{Number(operation.price).toFixed(8)}}</v-flex>
+                  <v-flex xs12>Valor da operação: {{Number(operation.quoteQty).toFixed(8)}}</v-flex>
+                  <v-flex v-if="operation.commissionAsset" xs6>Taxa: {{operation.commissionAsset}}</v-flex>
+                  <v-flex
+                    v-if="operation.commission"
+                    xs6
+                  >Valor da taxa: {{Number(operation.commission).toFixed(8)}}</v-flex>
+                </v-layout>
+                <v-layout v-else row>
+                  <v-flex xs12>Endereço: {{operation.address}}</v-flex>
+                  <v-flex xs12>ID da transação: {{operation.txId}}</v-flex>
+                  <v-flex
+                    xs12
+                    v-if="operation.type==='whitdraw'"
+                  >Taxa da transação: {{Number(operation.transactionFee).toFixed(8)}}</v-flex>
+                </v-layout>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-row>
+        <v-container fluid>
+          <v-layout v-if="loading" column justify-center align-center>
+            <v-flex xs12 class="text-xs-center">
+              <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            </v-flex>
+          </v-layout>
+        </v-container>
       </v-flex>
     </v-layout>
   </v-container>
@@ -54,28 +62,20 @@ import Date from "@/mixins/Date";
 
 export default {
   mixins: [Date],
+  created() {
+    window.addEventListener("scroll", () => {
+      this.bottom = this.bottomVisible();
+    });
+  },
+  watch: {
+    bottom(bottom) {
+      if (bottom) {
+        this.fetchOperationsFromFirestore();
+      }
+    }
+  },
   data: () => ({
-    expanded: [],
-    headers: [
-      { text: "Data", align: "right", value: "time", sortable: false },
-      { text: "Operação", align: "right", value: "type", sortable: false },
-      {
-        text: "Exchange",
-        align: "right",
-        value: "exchangeName",
-        sortable: false
-      },
-      {
-        text: "Moeda",
-        align: "right",
-        value: "symbol",
-        sortable: false
-      },
-      { text: "Tipo", align: "right", value: "isBuyer", sortable: false },
-      { text: "Quantidade", align: "right", value: "qty", sortable: false },
-      { text: "Preço (un)", align: "right", value: "price", sortable: false },
-      { text: "Valor", align: "right", value: "quoteQty", sortable: false },
-    ]
+    bottom: false
   }),
   computed: {
     user() {
@@ -83,6 +83,19 @@ export default {
     },
     loading() {
       return this.$store.getters.loading;
+    }
+  },
+  methods: {
+    fetchOperationsFromFirestore() {
+      return this.$store.dispatch("fetchMoreOperations");
+    },
+    bottomVisible() {
+      const scrollY = window.scrollY;
+      const visible = document.documentElement.clientHeight;
+      const pageHeight = document.documentElement.scrollHeight;
+      const bottomOfPage = visible + scrollY + 50 >= pageHeight;
+      const bottomVisible = bottomOfPage || pageHeight < visible;
+      return bottomVisible;
     }
   }
 };
