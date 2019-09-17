@@ -42,6 +42,7 @@ export default {
             }
           );
           saveAs(blob, 'Operacoes ' + payload.date + '.txt');
+          commit('setSnackbarContent', {type: "success", message: "Arquivo gerado com sucesso!"});
           commit('setCreating', false);
         });
     },
@@ -83,6 +84,7 @@ export default {
         .set(operation)
         .then(function() {
           commit('setCreating', false);
+          commit('setSnackbarContent', {type: "success", message: "Operação adicionada com sucesso!"});
           console.log('Operation added');
         })
         .catch(function(error) {
@@ -111,6 +113,7 @@ export default {
               commit('setOperations', operations);
               return operations;
             }
+            commit('setSnackbarContent', {type: "info", message: "Nenhuma operação encontrada"});
             commit('setLoading', false);
           },
           function(error) {
@@ -191,6 +194,7 @@ export default {
               null
             );
             commit('setOperations', null);
+            commit('setSnackbarContent', {type: "info", message: "Nenhuma operação encontrada"});
             commit('setLoading', false);
           },
           function(error) {

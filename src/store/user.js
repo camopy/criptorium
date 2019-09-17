@@ -254,6 +254,7 @@ export default {
       .set(payload)
       .then(function() {
         commit("setCreating", false);
+        commit('setSnackbarContent', {type: "success", message: "Exchange adicionada com sucesso!"});
         console.log("Exchange added");
       })
       .catch(function(error) {

@@ -4,7 +4,8 @@ export default {
     deleting: false,
     creating: false,
     updating: false,
-    error: null
+    error: null,
+    snackbarContent: null
   },
   mutations: {
     setLoading(state, payload) {
@@ -22,13 +23,22 @@ export default {
     setError(state, payload) {
       state.error = payload;
     },
+    setSnackbarContent(state, payload) {
+      state.snackbarContent = payload;
+    },
     clearError(state) {
       state.error = null;
+    },
+    clearSnackbarContent(state) {
+      state.snackbarContent = null;
     }
   },
   actions: {
     clearError({ commit }) {
       commit("clearError");
+    },
+    clearSnackbarContent({ commit }) {
+      commit("clearSnackbarContent");
     }
   },
   getters: {
@@ -46,6 +56,9 @@ export default {
     },
     error(state) {
       return state.error;
+    },
+    snackbarContent(state) {
+      return state.snackbarContent;
     }
   }
 };

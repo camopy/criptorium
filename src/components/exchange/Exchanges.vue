@@ -27,6 +27,7 @@
             </v-container>
           </v-card>
         </v-flex>
+      <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
       </v-layout>
     </v-slide-y-transition>
   </v-container>
@@ -34,8 +35,12 @@
 
 <script>
 import Date from "@/mixins/Date";
+import AppSnackbar from "@/components/shared/Snackbar";
 
 export default {
+  components: {
+    AppSnackbar
+  },
   mixins: [Date],
   computed: {
     user() {
@@ -46,6 +51,9 @@ export default {
     },
     creating() {
       return this.$store.getters.creating;
+    },
+    snackbarContent() {
+      return this.$store.getters.snackbarContent;
     }
   },
   methods: {

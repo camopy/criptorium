@@ -2,47 +2,46 @@
   <v-container id="scroll-target" fluid>
     <v-layout v-if="user">
       <v-flex xs12>
-        <v-row >
+        <v-row>
           <v-container>
             <v-layout>
-          <v-spacer></v-spacer>
+              <v-spacer></v-spacer>
 
-          <v-flex xs10 sm5 md5>
-            <v-menu
-              ref="dateMenu"
-              :close-on-content-click="false"
-              v-model="dateMenu"
-              :nudge-right="40"
-              transition="scale-transition"
-              offset-y
-              full-width
-              max-width="290px"
-              min-width="290px"
-            >
-              <template v-slot:activator="{ on }">
-                <v-text-field
-                  :value="computedDateFormatted"
-                  label="Mês das operações"
-                  prepend-icon="fas fa-calendar"
-                  clearable
-                  @click:clear="filterOperationsFromFirestore"
-                  v-on="on"
-                ></v-text-field>
-              </template>
-              <v-date-picker
-                v-model="date"
-                full-width
-                type="month"
-                min="2019-08"
-                :max="new Date().toISOString().substr(0, 10)"
-                no-title
-                :show-current="this.$moment().format('YYYY-MM')"
-                @change="save"
-              ></v-date-picker>
-            </v-menu>
-          </v-flex>
+              <v-flex xs10 sm5 md5>
+                <v-menu
+                  ref="dateMenu"
+                  :close-on-content-click="false"
+                  v-model="dateMenu"
+                  :nudge-right="40"
+                  transition="scale-transition"
+                  offset-y
+                  full-width
+                  max-width="290px"
+                  min-width="290px"
+                >
+                  <template v-slot:activator="{ on }">
+                    <v-text-field
+                      :value="computedDateFormatted"
+                      label="Mês das operações"
+                      prepend-icon="fas fa-calendar"
+                      clearable
+                      @click:clear="filterOperationsFromFirestore"
+                      v-on="on"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="date"
+                    full-width
+                    type="month"
+                    min="2019-05"
+                    :max="new Date().toISOString().substr(0, 10)"
+                    no-title
+                    :show-current="this.$moment().format('YYYY-MM')"
+                    @change="save"
+                  ></v-date-picker>
+                </v-menu>
+              </v-flex>
             </v-layout>
-
           </v-container>
           <v-expansion-panels popout multiple>
             <v-expansion-panel v-for="operation in user.operations" :key="operation.id">
@@ -96,13 +95,18 @@
         </v-container>
       </v-flex>
     </v-layout>
+    <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
   </v-container>
 </template>
 
 <script>
 import Date from "@/mixins/Date";
+import AppSnackbar from "@/components/shared/Snackbar";
 
 export default {
+  components: {
+    AppSnackbar
+  },
   mixins: [Date],
   created() {
     window.addEventListener("scroll", () => {
@@ -112,21 +116,20 @@ export default {
   watch: {
     bottom(bottom) {
       if (bottom) {
-        if(this.date){
+        if (this.date) {
           this.fetchOperationsFromFirestoreByMonth(this.date);
-        }
-        else {
+        } else {
           this.fetchOperationsFromFirestore();
         }
       }
     },
     date(value) {
-      if(value) {
+      if (value) {
         this.filterOperationsByDateFromFirestore(value);
       }
     },
     lastReturnedOperationByMonth(value) {
-      if(!value) {
+      if (!value) {
         this.date = "";
       }
     }
@@ -142,6 +145,9 @@ export default {
     },
     loading() {
       return this.$store.getters.loading;
+    },
+    snackbarContent() {
+      return this.$store.getters.snackbarContent;
     },
     computedDateFormatted() {
       return this.formatDateToMonth(this.date);

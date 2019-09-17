@@ -36,6 +36,7 @@ export default {
         )
         .then((response) => {
           console.log(response.data);
+          commit('setSnackbarContent', {type: "success", message: "Operações sincronizadas com sucesso!"});
           commit('setCreating', false);
         });
     }
