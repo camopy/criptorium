@@ -4,10 +4,17 @@
       <v-flex xs12>
         <v-row>
           <v-container>
-            <v-layout>
+            <v-layout row wrap align-center>
+              <v-btn
+                dark
+                small
+                color="green"
+                @click="generateOperationsTextFileDialog = !generateOperationsTextFileDialog"
+              >
+              Gerar TXT
+                </v-btn>
               <v-spacer></v-spacer>
-
-              <v-flex xs10 sm5 md5>
+              <v-flex xs12 sm5 md5>
                 <v-menu
                   ref="dateMenu"
                   :close-on-content-click="false"
@@ -43,7 +50,7 @@
               </v-flex>
             </v-layout>
           </v-container>
-          <v-expansion-panels popout multiple>
+          <v-expansion-panels inset multiple>
             <v-expansion-panel v-for="operation in user.operations" :key="operation.id">
               <v-expansion-panel-header>
                 <v-layout row>
@@ -96,16 +103,19 @@
       </v-flex>
     </v-layout>
     <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
+    <GenerateOperationsTextFileDialog :visible="generateOperationsTextFileDialog" @close="generateOperationsTextFileDialog = false"></GenerateOperationsTextFileDialog>
   </v-container>
 </template>
 
 <script>
 import Date from "@/mixins/Date";
 import AppSnackbar from "@/components/shared/Snackbar";
+import GenerateOperationsTextFileDialog from "@/components/operation/GenerateOperationsTextFileDialog";
 
 export default {
   components: {
-    AppSnackbar
+    AppSnackbar,
+    GenerateOperationsTextFileDialog
   },
   mixins: [Date],
   created() {
@@ -137,7 +147,8 @@ export default {
   data: () => ({
     bottom: false,
     date: "",
-    dateMenu: false
+    dateMenu: false,
+    generateOperationsTextFileDialog: false
   }),
   computed: {
     user() {
