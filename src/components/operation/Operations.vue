@@ -33,7 +33,7 @@
                     v-model="date"
                     full-width
                     type="month"
-                    min="2019-05"
+                    min="2019-08"
                     :max="new Date().toISOString().substr(0, 10)"
                     no-title
                     :show-current="this.$moment().format('YYYY-MM')"
