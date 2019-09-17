@@ -4,7 +4,8 @@ import router from './router'
 import { store } from './store'
 import vuetify from './plugins/vuetify';
 import moment from "moment";
-import * as firebase from "firebase";
+import firebase from "firebase/app";
+import "firebase/firestore";
 
 import AlertCmp from "./components/shared/Alert";
 

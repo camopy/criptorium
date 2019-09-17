@@ -44,9 +44,14 @@
         <span class="hidden-sm-and-down">Cripto RF</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn icon>
-        <v-icon>far fa-bell</v-icon>
-      </v-btn>
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on }">
+          <v-btn slot="activator" v-on="on" to="/profile" icon>
+            <v-icon>fas fa-user</v-icon>
+          </v-btn>
+        </template>
+        <span>Perfil</span>
+      </v-tooltip>
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" @click="onLogout" icon>
@@ -71,16 +76,7 @@ export default {
     drawer: null,
     items: [
       { icon: "fas fa-exchange-alt", text: "Operações", to: "/operations" },
-      {
-        icon: "fas fa-angle-up",
-        "icon-alt": "fas fa-angle-down",
-        text: "Perfil",
-        model: true,
-        children: [
-          { icon: "fas fa-user", text: "Meus dados", to: "/profile" },
-          { icon: "fas fa-university", text: "Exchanges", to: "/exchanges" }
-        ]
-      }
+      { icon: "fas fa-university", text: "Exchanges", to: "/exchanges" }
     ]
   }),
   methods: {
