@@ -33,7 +33,7 @@
                     ref="datePicker"
                     v-model="date"
                     :max="new Date().toISOString().substr(0, 10)"
-                    min="2019-08-01"
+                    min="2019-07-01"
                     no-title
                     @change="save"
                   ></v-date-picker>

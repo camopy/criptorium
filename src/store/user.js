@@ -194,6 +194,7 @@ export default {
                 });
                 let lastReturnedOperation = querySnapshot.docs[querySnapshot.docs.length-1];
                 commit("setLastReturnedOperation", lastReturnedOperation);
+                commit("setLastReturnedOperationByMonth", null);
                 // updatedUser.operations = operations;
                 commit("setOperations", operations);
                 return operations;

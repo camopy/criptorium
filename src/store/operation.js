@@ -5,11 +5,15 @@ import { saveAs } from 'file-saver';
 
 export default {
   state: {
-    lastReturnedOperation: null
+    lastReturnedOperation: null,
+    lastReturnedOperationByMonth: null
   },
   mutations: {
     setLastReturnedOperation(state, payload) {
       state.lastReturnedOperation = payload;
+    },
+    setLastReturnedOperationByMonth(state, payload) {
+      state.lastReturnedOperationByMonth = payload;
     }
   },
   actions: {
@@ -46,7 +50,7 @@ export default {
       let user = getters.user;
 
       let operation = {
-        time: moment(payload.date, 'YYYY-MM-DD').format('x'),
+        time: Number(moment(payload.date, 'YYYY-MM-DD').format('x')),
         qty: payload.baseAssetQty,
         exchangeCountryCode: payload.exchangeCountryCode,
         exchangeName: payload.exchangeName,
@@ -86,6 +90,36 @@ export default {
           console.error('Error adding operation: ', error);
         });
     },
+    fetchOperations({ commit, getters }) {
+      let user = getters.user;
+      commit('setLoading', true);
+      db.collection('users')
+        .doc(user.id)
+        .collection('operations')
+        .orderBy('time', 'desc')
+        .limit(15)
+        .get()
+        .then(
+          (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              let operations = querySnapshot.docs.map(function(operation) {
+                return { ...operation.data(), id: operation.id };
+              });
+              let lastReturnedOperation =
+                querySnapshot.docs[querySnapshot.docs.length - 1];
+              commit('setLastReturnedOperation', lastReturnedOperation);
+              commit('setOperations', operations);
+              return operations;
+            }
+            commit('setLoading', false);
+          },
+          function(error) {
+            console.error('Error getting user operations:', error);
+            commit('setLoading', false);
+            return error;
+          }
+        );
+    },
     fetchMoreOperations({ commit, getters }) {
       let user = getters.user;
       let lastReturnedOperation = getters.lastReturnedOperation;
@@ -93,13 +127,13 @@ export default {
       db.collection('users')
         .doc(user.id)
         .collection('operations')
-        .orderBy("time", "desc")
+        .orderBy('time', 'desc')
         .startAfter(lastReturnedOperation)
         .limit(15)
         .get()
         .then(
           (querySnapshot) => {
-            if(!querySnapshot.empty){
+            if (!querySnapshot.empty) {
               let operations = querySnapshot.docs.map(function(operation) {
                 return { ...operation.data(), id: operation.id };
               });
@@ -117,11 +151,106 @@ export default {
             return error;
           }
         );
+    },
+    fetchOperationsByMonth({ commit, getters }, payload) {
+      let user = getters.user;
+      let startTimestamp = Number(moment(payload, 'YYYY-MM').format('x'));
+      let endTimestamp = Number(
+        moment(payload, 'YYYY-MM')
+          .endOf('month')
+          .format('x')
+      );
+      commit('setOperations', null);
+      commit('setLoading', true);
+      db.collection('users')
+        .doc(user.id)
+        .collection('operations')
+        .where('time', '>=', startTimestamp)
+        .where('time', '<=', endTimestamp)
+        .orderBy('time', 'desc')
+        .limit(15)
+        .get()
+        .then(
+          (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              let operations = querySnapshot.docs.map(function(operation) {
+                return { ...operation.data(), id: operation.id };
+              });
+              let lastReturnedOperationByMonth =
+                querySnapshot.docs[querySnapshot.docs.length - 1];
+              commit(
+                'setLastReturnedOperationByMonth',
+                lastReturnedOperationByMonth
+              );
+              commit('setOperations', operations);
+              commit('setLoading', false);
+              return operations;
+            }
+            commit(
+              'setLastReturnedOperationByMonth',
+              null
+            );
+            commit('setOperations', null);
+            commit('setLoading', false);
+          },
+          function(error) {
+            console.error('Error getting user operations:', error);
+            commit('setLoading', false);
+            return error;
+          }
+        );
+    },
+    fetchMoreOperationsByMonth({ commit, getters }, payload) {
+      let user = getters.user;
+      let startTimestamp = Number(moment(payload, 'YYYY-MM').format('x'));
+      let endTimestamp = Number(
+        moment(payload, 'YYYY-MM')
+          .endOf('month')
+          .format('x')
+      );
+      let lastReturnedOperationByMonth = getters.lastReturnedOperationByMonth;
+      commit('setLoading', true);
+      db.collection('users')
+        .doc(user.id)
+        .collection('operations')
+        .where('time', '>=', startTimestamp)
+        .where('time', '<=', endTimestamp)
+        .orderBy('time', 'desc')
+        .startAfter(lastReturnedOperationByMonth)
+        .limit(15)
+        .get()
+        .then(
+          (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              let operations = querySnapshot.docs.map(function(operation) {
+                return { ...operation.data(), id: operation.id };
+              });
+              let lastReturnedOperationByMonth =
+                querySnapshot.docs[querySnapshot.docs.length - 1];
+              commit(
+                'setLastReturnedOperationByMonth',
+                lastReturnedOperationByMonth
+              );
+              commit('setMoreOperations', operations);
+              commit('setLoading', false);
+              return operations;
+            }
+            commit('setLoading', false);
+          },
+          function(error) {
+            console.error('Error getting user operations:', error);
+            commit('setLoading', false);
+            return error;
+          }
+        );
     }
   },
   getters: {
     lastReturnedOperation(state) {
       return state.lastReturnedOperation;
+    },
+    lastReturnedOperationByMonth(state) {
+      return state.lastReturnedOperationByMonth;
     }
   }
 };
