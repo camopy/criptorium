@@ -20,5 +20,8 @@ service cloud.firestore {
         allow read, write: if request.auth.uid != null;
       }
     }
+    match /exchanges/{exchange} {
+      allow read, write: if request.auth.uid != null;
+    }
   }
 }

@@ -8,7 +8,7 @@
         right
         fixed
         dark
-        color="indigo"
+        color="primary"
         @click="operationDialog = !operationDialog"
       >
         <v-icon>fas fa-plus</v-icon>

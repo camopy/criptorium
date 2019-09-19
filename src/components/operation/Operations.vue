@@ -124,6 +124,9 @@ export default {
     });
   },
   watch: {
+    // snackbarContent(value) {
+    //   console.log('changed', value);
+    // },
     bottom(bottom) {
       if (bottom) {
         if (this.date) {

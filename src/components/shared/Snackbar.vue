@@ -1,5 +1,5 @@
 <template>
-  <v-snackbar v-model="snackbar" :color="content.type">
+  <v-snackbar v-model="snackbar" :value="content" :color="content.type">
     {{content.message}}
     <v-btn dark text @click="onClose">Close</v-btn>
   </v-snackbar>
@@ -7,7 +7,9 @@
 
 <script>
 export default {
-  props: ["content"],
+  props: {
+    content: Object
+  },
   computed: {
     snackbar: {
       get() {
@@ -16,6 +18,7 @@ export default {
       set(value) {
         if (!value) {
           this.$emit("close");
+          this.$store.dispatch("clearSnackbarContent");
         }
       }
     }
