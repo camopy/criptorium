@@ -11,6 +11,9 @@ export default {
     setUser(state, payload) {
       state.user = payload;
     },
+    setPlan(state, payload) {
+      state.user.plan = payload;
+    },
     setExchanges(state, payload) {
       state.user.exchanges = payload;
     },
@@ -78,6 +81,14 @@ export default {
                 cpf: payload.cpf,
                 birthday: payload.birthday,
                 dateCreated: moment().toISOString(),
+                plan: {
+                  name: "Free",
+                  startDate: "",
+                  endDate: "",
+                  syncExchanges: false,
+                  manualOperations: true,
+                  status: "active"
+                },
                 exchanges: [],
               operations: [],
               lastOperations: []
@@ -139,11 +150,12 @@ export default {
           if (doc.exists) {
             const updatedUser = {
               id: payload.uid,
-              name: doc.data().name,
-              email: doc.data().email,
-              cpf: doc.data().cpf,
-              birthday: doc.data().birthday,
-              dateCreated: doc.data().dateCreated,
+              ...doc.data(),
+              // name: doc.data().name,
+              // email: doc.data().email,
+              // cpf: doc.data().cpf,
+              // birthday: doc.data().birthday,
+              // dateCreated: doc.data().dateCreated,
               exchanges: [],
               operations: [],
               lastOperations: []
@@ -158,7 +170,7 @@ export default {
         .then(updatedUser => {
           let promises = [];
 
-          this.unsubscribeSystemExchangesListener = dispatch("loadSystemExchanges");
+          dispatch("loadSystemExchanges");
 
           this.unsubscribeExchangesListener = db
             .collection("users")

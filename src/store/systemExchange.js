@@ -11,7 +11,7 @@ export default {
   },
   actions: {
     loadSystemExchanges({commit}) {
-      return db.collection('exchanges')
+      return this.unsubscribeSystemExchangesListener = db.collection('exchanges')
         .onSnapshot(
         (querySnapshot) => {
           let exchanges = querySnapshot.docs.map(function(exchange) {
