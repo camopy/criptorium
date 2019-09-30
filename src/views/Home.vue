@@ -44,6 +44,7 @@
         <span class="hidden-sm-and-down">Cripto RF</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
+      <v-btn v-if="user.plan.name !== 'Pro'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" to="/profile" icon>
@@ -64,25 +65,46 @@
     <v-content>
       <router-view></router-view>
     </v-content>
+    <SignPlanStepper :visible="signPlanStepperDialog" @close="signPlanStepperDialog = false" />
   </v-app>
 </template>
 
 <script>
+import SignPlanStepper from "../components/plan/SignPlanStepper";
+
 export default {
+  components: {
+    SignPlanStepper
+  },
   props: {
     source: String
   },
   data: () => ({
     drawer: null,
+    signPlanStepperDialog: false,
     items: [
       { icon: "fas fa-exchange-alt", text: "Operações", to: "/operations" },
       { icon: "fas fa-university", text: "Exchanges", to: "/exchanges" }
     ]
   }),
+  computed: {
+    plans() {
+      return this.$store.getters.plans;
+    },
+    user() {
+      return this.$store.getters.user;
+    }
+  },
   methods: {
     onLogout() {
       this.$store.dispatch("logout");
       this.$router.push("/signin");
+    },
+    onUpgradeAccount() {
+      if(this.plans.length === 0) {
+        this.$store.dispatch("loadPlans");
+      }
+      this.signPlanStepperDialog = !this.signPlanStepperDialog
     }
   }
 };
