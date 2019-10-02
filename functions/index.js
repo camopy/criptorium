@@ -44,248 +44,268 @@ function getPlan(planId) {
     });
 }
 
+function getFreePlan() {
+  return admin
+    .firestore()
+    .collection('plans')
+    .where('name', '==', 'Free')
+    .where('status', '==', 'active')
+    .get()
+    .then((planSnapshot) => {
+      if (planSnapshot.empty) {
+        throw new Error('Plano Free não encontrado');
+      }
+
+      return {
+        id: planSnapshot.docs[0].id,
+        ...planSnapshot.docs[0].data()
+      };
+    });
+}
+
 exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     let user = await getUser(req.query.userId);
+
     if (!user.plan.syncExchanges) {
-      throw new Error("Operação não autorizada para o plano contratado");
-    } else {
-      const client = Binance({
-        apiKey: req.query.apiKey,
-        apiSecret: req.query.privateKey
-      });
+      throw new Error('Operação não autorizada para o plano contratado');
+    }
 
-      client.exchangeInfo({ useServerTime: true }).then((exchangeInfo) => {
-        const promises = [];
-        const timeoutPromises = [];
-        const batch = admin.firestore().batch();
-        const lastOperations = req.query.lastOperations
-          ? JSON.parse(req.query.lastOperations)
-          : false;
-        const exchangeId = req.query.exchangeId;
-        const exchangeName = req.query.exchangeName;
-        const exchangeUrl = req.query.exchangeUrl;
-        const exchangeCountryCode = req.query.exchangeCountryCode;
-        const syncTimestamp = moment().format('x');
-        exchangeInfo.symbols.forEach((symbolInfo, index) => {
-          let timeoutPromise = new Promise((resolve) =>
-            setTimeout(() => {
-              let symbol = symbolInfo.symbol;
-              let baseAsset = symbolInfo.baseAsset;
-              let quoteAsset = symbolInfo.quoteAsset;
+    const client = Binance({
+      apiKey: req.query.apiKey,
+      apiSecret: req.query.privateKey
+    });
 
-              let tradeParams = {
-                symbol: symbol,
-                useServerTime: true,
-                recvWindow: 10000000
-              };
-              let lastOperation = lastOperations
-                ? lastOperations[symbol] || false
-                : false;
+    client.exchangeInfo({ useServerTime: true }).then((exchangeInfo) => {
+      const promises = [];
+      const timeoutPromises = [];
+      const batch = admin.firestore().batch();
+      const lastOperations = req.query.lastOperations
+        ? JSON.parse(req.query.lastOperations)
+        : false;
+      const exchangeId = req.query.exchangeId;
+      const exchangeName = req.query.exchangeName;
+      const exchangeUrl = req.query.exchangeUrl;
+      const exchangeCountryCode = req.query.exchangeCountryCode;
+      const syncTimestamp = moment().format('x');
+      exchangeInfo.symbols.forEach((symbolInfo, index) => {
+        let timeoutPromise = new Promise((resolve) =>
+          setTimeout(() => {
+            let symbol = symbolInfo.symbol;
+            let baseAsset = symbolInfo.baseAsset;
+            let quoteAsset = symbolInfo.quoteAsset;
 
-              if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
+            let tradeParams = {
+              symbol: symbol,
+              useServerTime: true,
+              recvWindow: 10000000
+            };
+            let lastOperation = lastOperations
+              ? lastOperations[symbol] || false
+              : false;
 
-              let trades = client.myTrades(tradeParams).then(
-                (trades) => {
-                  let lastTradeId = '';
-                  trades.forEach((trade) => {
-                    lastTradeId = trade.id;
-                    if (trade.time >= 1561950000000) {
-                      let operationDoc = admin
-                        .firestore()
-                        .collection(
-                          'users/' + req.query.userId + '/operations/'
-                        )
-                        .doc();
-                      batch.set(operationDoc, {
-                        ...trade,
-                        baseAsset: baseAsset,
-                        quoteAsset: quoteAsset,
-                        exchangeName: exchangeName,
-                        exchangeUrl: exchangeUrl,
-                        exchangeCountryCode: exchangeCountryCode,
-                        type: 'trade'
-                      });
-                    }
-                  });
+            if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
 
-                  if (trades.length > 0) {
-                    let lastOperation = admin
+            let trades = client.myTrades(tradeParams).then(
+              (trades) => {
+                let lastTradeId = '';
+                trades.forEach((trade) => {
+                  lastTradeId = trade.id;
+                  if (trade.time >= 1561950000000) {
+                    let operationDoc = admin
                       .firestore()
                       .collection(
-                        'users/' + req.query.userId + '/lastOperations/'
+                        'users/' + req.query.userId + '/operations/'
                       )
-                      .doc('binance');
-                    let symbolObj = {};
-                    symbolObj[symbol] = { trade: lastTradeId };
-                    batch.set(lastOperation, symbolObj, { merge: true });
-                  }
-
-                  return trades;
-                },
-                function(error) {
-                  console.error('Error getting binance account trades:', error);
-                  return Promise.reject(error);
-                }
-              );
-              promises.push(trades);
-              resolve();
-            }, 500 * index)
-          );
-          timeoutPromises.push(timeoutPromise);
-        });
-
-        Promise.all(timeoutPromises).then(() => {
-          let depositParams = {
-            startTime: 1561950000000,
-            useServerTime: true,
-            recvWindow: 10000000
-          };
-          let lastDeposit = lastOperations
-            ? lastOperations.deposit || false
-            : false;
-
-          if (lastDeposit) depositParams.startTime = lastDeposit + 1;
-
-          let depositHistory = client.depositHistory(depositParams).then(
-            (deposits) => {
-              let lastDepositTimestamp = '';
-              deposits.depositList.forEach((deposit) => {
-                lastDepositTimestamp = deposit.insertTime;
-                let symbol = deposit.asset;
-                let time = deposit.insertTime;
-                let qty = deposit.amount;
-                delete deposit.asset;
-                delete deposit.insertTime;
-                delete deposit.amount;
-                let operationDoc = admin
-                  .firestore()
-                  .collection('users/' + req.query.userId + '/operations/')
-                  .doc();
-                batch.set(operationDoc, {
-                  ...deposit,
-                  symbol: symbol,
-                  time: time,
-                  qty: qty,
-                  exchangeName: exchangeName,
-                  exchangeUrl: exchangeUrl,
-                  exchangeCountryCode: exchangeCountryCode,
-                  type: 'deposit'
-                });
-              });
-
-              if (deposits.depositList.length > 0) {
-                let lastOperation = admin
-                  .firestore()
-                  .collection('users/' + req.query.userId + '/lastOperations/')
-                  .doc('binance');
-                batch.set(
-                  lastOperation,
-                  { deposit: lastDepositTimestamp },
-                  { merge: true }
-                );
-              }
-
-              return deposits;
-            },
-            function(error) {
-              console.error(
-                'Error getting binance account deposit history:',
-                error
-              );
-              return Promise.reject(error);
-            }
-          );
-          promises.push(depositHistory);
-
-          let whitdrawParams = {
-            startTime: 1561950000000,
-            useServerTime: true,
-            recvWindow: 10000000
-          };
-          let lastWhitdraw = lastOperations
-            ? lastOperations.whitdraw || false
-            : false;
-
-          if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
-
-          let withdrawHistory = client.withdrawHistory(whitdrawParams).then(
-            (whitdraws) => {
-              let lastWhitdrawTimestamp = '';
-              whitdraws.withdrawList.forEach((whitdraw) => {
-                lastWhitdrawTimestamp = whitdraw.applyTime;
-                let symbol = whitdraw.asset;
-                let time = whitdraw.applyTime;
-                let qty = whitdraw.amount;
-                delete whitdraw.asset;
-                delete whitdraw.applyTime;
-                delete whitdraw.amount;
-                let operationDoc = admin
-                  .firestore()
-                  .collection('users/' + req.query.userId + '/operations/')
-                  .doc();
-                batch.set(operationDoc, {
-                  ...whitdraw,
-                  symbol: symbol,
-                  time: time,
-                  qty: qty,
-                  exchangeName: exchangeName,
-                  exchangeUrl: exchangeUrl,
-                  exchangeCountryCode: exchangeCountryCode,
-                  type: 'whitdraw'
-                });
-              });
-
-              if (whitdraws.withdrawList.length > 0) {
-                let lastOperation = admin
-                  .firestore()
-                  .collection('users/' + req.query.userId + '/lastOperations/')
-                  .doc('binance');
-                batch.set(
-                  lastOperation,
-                  { whitdraw: lastWhitdrawTimestamp },
-                  { merge: true }
-                );
-              }
-
-              return whitdraws;
-            },
-            function(error) {
-              console.log(
-                'Error getting binance account whitdraw history:',
-                error
-              );
-              return Promise.reject(error);
-            }
-          );
-          promises.push(withdrawHistory);
-
-          Promise.all(promises)
-            .then(() => {
-              return batch.commit().then(() => {
-                admin
-                  .firestore()
-                  .collection('users')
-                  .doc(req.query.userId)
-                  .collection('exchanges')
-                  .doc(exchangeId)
-                  .update({ lastSync: syncTimestamp })
-                  .then((response) => {
-                    return res.status(200).send({
-                      type: 'success',
-                      message: 'Operações sincronizadas com sucesso!',
-                      content: response
+                      .doc();
+                    batch.set(operationDoc, {
+                      ...trade,
+                      baseAsset: baseAsset,
+                      quoteAsset: quoteAsset,
+                      exchangeName: exchangeName,
+                      exchangeUrl: exchangeUrl,
+                      exchangeCountryCode: exchangeCountryCode,
+                      type: 'trade'
                     });
-                  });
-              });
-            })
-            .catch((error) => {
-              console.log(error);
-              return res.status(200).send({ type: 'error', message: error });
-            });
-        });
+                  }
+                });
+
+                if (trades.length > 0) {
+                  let lastOperation = admin
+                    .firestore()
+                    .collection(
+                      'users/' + req.query.userId + '/lastOperations/'
+                    )
+                    .doc('binance');
+                  let symbolObj = {};
+                  symbolObj[symbol] = { trade: lastTradeId };
+                  batch.set(lastOperation, symbolObj, { merge: true });
+                }
+
+                return trades;
+              },
+              function(error) {
+                console.error('Error getting binance account trades:', error);
+                return Promise.reject(error);
+              }
+            );
+            promises.push(trades);
+            resolve();
+          }, 500 * index)
+        );
+        timeoutPromises.push(timeoutPromise);
       });
-    }
+
+      Promise.all(timeoutPromises).then(() => {
+        let depositParams = {
+          startTime: 1561950000000,
+          useServerTime: true,
+          recvWindow: 10000000
+        };
+        let lastDeposit = lastOperations
+          ? lastOperations.deposit || false
+          : false;
+
+        if (lastDeposit) depositParams.startTime = lastDeposit + 1;
+
+        let depositHistory = client.depositHistory(depositParams).then(
+          (deposits) => {
+            let lastDepositTimestamp = '';
+            deposits.depositList.forEach((deposit) => {
+              lastDepositTimestamp = deposit.insertTime;
+              let symbol = deposit.asset;
+              let time = deposit.insertTime;
+              let qty = deposit.amount;
+              delete deposit.asset;
+              delete deposit.insertTime;
+              delete deposit.amount;
+              let operationDoc = admin
+                .firestore()
+                .collection('users/' + req.query.userId + '/operations/')
+                .doc();
+              batch.set(operationDoc, {
+                ...deposit,
+                symbol: symbol,
+                time: time,
+                qty: qty,
+                exchangeName: exchangeName,
+                exchangeUrl: exchangeUrl,
+                exchangeCountryCode: exchangeCountryCode,
+                type: 'deposit'
+              });
+            });
+
+            if (deposits.depositList.length > 0) {
+              let lastOperation = admin
+                .firestore()
+                .collection('users/' + req.query.userId + '/lastOperations/')
+                .doc('binance');
+              batch.set(
+                lastOperation,
+                { deposit: lastDepositTimestamp },
+                { merge: true }
+              );
+            }
+
+            return deposits;
+          },
+          function(error) {
+            console.error(
+              'Error getting binance account deposit history:',
+              error
+            );
+            return Promise.reject(error);
+          }
+        );
+        promises.push(depositHistory);
+
+        let whitdrawParams = {
+          startTime: 1561950000000,
+          useServerTime: true,
+          recvWindow: 10000000
+        };
+        let lastWhitdraw = lastOperations
+          ? lastOperations.whitdraw || false
+          : false;
+
+        if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
+
+        let withdrawHistory = client.withdrawHistory(whitdrawParams).then(
+          (whitdraws) => {
+            let lastWhitdrawTimestamp = '';
+            whitdraws.withdrawList.forEach((whitdraw) => {
+              lastWhitdrawTimestamp = whitdraw.applyTime;
+              let symbol = whitdraw.asset;
+              let time = whitdraw.applyTime;
+              let qty = whitdraw.amount;
+              delete whitdraw.asset;
+              delete whitdraw.applyTime;
+              delete whitdraw.amount;
+              let operationDoc = admin
+                .firestore()
+                .collection('users/' + req.query.userId + '/operations/')
+                .doc();
+              batch.set(operationDoc, {
+                ...whitdraw,
+                symbol: symbol,
+                time: time,
+                qty: qty,
+                exchangeName: exchangeName,
+                exchangeUrl: exchangeUrl,
+                exchangeCountryCode: exchangeCountryCode,
+                type: 'whitdraw'
+              });
+            });
+
+            if (whitdraws.withdrawList.length > 0) {
+              let lastOperation = admin
+                .firestore()
+                .collection('users/' + req.query.userId + '/lastOperations/')
+                .doc('binance');
+              batch.set(
+                lastOperation,
+                { whitdraw: lastWhitdrawTimestamp },
+                { merge: true }
+              );
+            }
+
+            return whitdraws;
+          },
+          function(error) {
+            console.log(
+              'Error getting binance account whitdraw history:',
+              error
+            );
+            return Promise.reject(error);
+          }
+        );
+        promises.push(withdrawHistory);
+
+        Promise.all(promises)
+          .then(() => {
+            return batch.commit().then(() => {
+              admin
+                .firestore()
+                .collection('users')
+                .doc(req.query.userId)
+                .collection('exchanges')
+                .doc(exchangeId)
+                .update({ lastSync: syncTimestamp })
+                .then((response) => {
+                  return res.status(200).send({
+                    type: 'success',
+                    message: 'Operações sincronizadas com sucesso!',
+                    content: response
+                  });
+                });
+            });
+          })
+          .catch((error) => {
+            console.log(error);
+            return res.status(200).send({ type: 'error', message: error });
+          });
+      });
+    });
   });
 });
 
@@ -431,6 +451,9 @@ function getPagseguroCardBrand(sessionId, cardBin) {
       creditCard: cardBin
     }
   }).then((response) => {
+    if(!response.data.bin.brand) {
+      throw new Error("Cartão inválido");
+    }
     return response.data.bin.brand.name;
   });
 }
@@ -478,131 +501,183 @@ function createUserPagseguroPlan(batch, user, plan, period, pagseguroPlanCode) {
   });
 }
 
+function cancelUserPagseguroPlan(batch, user) {
+  let userPagseguroPlanDoc = admin
+    .firestore()
+    .collection('user_pagseguro_plan')
+    .doc(user.id + '_' + user.plan.pagseguroPlanCode);
+
+  return batch.update(userPagseguroPlanDoc, {
+    status: 'canceled',
+    cancelDate: moment().format('x')
+  });
+}
+
+function errorMessageHandler(error) {
+  let message = 'Contate o suporte';
+  console.error(error);
+
+  // console.log("Type", typeof(error));
+  // console.log("error message", error.message);
+  // console.log("error response",error.response);
+  // console.log("error response statusText", error.response.statusText);
+  // console.log("error.response.data", error.response.data);
+  // console.log("error.response.data.errors", error.response.data.errors);
+
+  if (typeof error === 'string') {
+    message = error;
+  } else if (error instanceof Error) {
+    message = error.message;
+    if (error.response && error.response.data && error.response.data.errors) {
+      console.error(error.response.data.errors);
+    }
+    if (error.response && error.response.statusText) {
+      console.error(error.response.statusText);
+    }
+  } else {
+    const json = xmlParser.xml2js(error.response.data, { compact: true });
+    message = json.errors.error.message._text;
+    console.error(message);
+  }
+
+  return message;
+}
+
 exports.signUserToPlan = functions.https.onRequest((req, res) => {
   return cors(req, res, () => {
-    let plan = JSON.parse(req.query.plan);
-    let planPeriod =
-      req.query.planPeriod === 'monthly' ? plan.monthly : plan.yearly;
+    try {
+      let plan = JSON.parse(req.query.plan);
+      let planPeriod =
+        req.query.planPeriod === 'monthly' ? plan.monthly : plan.yearly;
 
-    let promises = [];
-    promises.push(getPlan(plan.id));
-    promises.push(getUser(req.query.userId));
+      let promises = [];
+      promises.push(getPlan(plan.id));
+      promises.push(getUser(req.query.userId));
 
-    Promise.all(promises)
-      .then(async (response) => {
-        let plan = response[0];
-        let user = response[1];
+      Promise.all(promises)
+        .then(async (response) => {
+          let plan = response[0];
+          let user = response[1];
 
-        if (user.plan.id === plan.id) {
-          throw new Error('Usuário já aderiu ao plano');
-        }
+          if (user.plan.id === plan.id) {
+            throw new Error('Usuário já aderiu ao plano');
+          }
 
-        let address = JSON.parse(req.query.address);
-        let phone = JSON.parse(req.query.phone);
+          let address = JSON.parse(req.query.address);
+          let phone = JSON.parse(req.query.phone);
 
-        if (!user.address || !user.phone) {
-          updateUserAddressAndPhone(user.id, address, phone);
-        }
+          if (!user.address || !user.phone) {
+            updateUserAddressAndPhone(user.id, address, phone);
+          }
 
-        let url = 'https://ws.sandbox.pagseguro.uol.com.br';
-        let auth = {
-          email: 'paulorenato.cpb@gmail.com',
-          token: '3D19535BD4EF4FFCB5533DF1F7E64D6B'
-        };
+          let url = 'https://ws.sandbox.pagseguro.uol.com.br';
+          let auth = {
+            email: 'paulorenato.cpb@gmail.com',
+            token: '3D19535BD4EF4FFCB5533DF1F7E64D6B'
+          };
 
-        let sessionId = await setPagseguroSession(url, auth);
-        let card = JSON.parse(req.query.card);
+          let sessionId = await setPagseguroSession(url, auth);
+          let card = JSON.parse(req.query.card);
 
-        card.cardBrand = await getPagseguroCardBrand(
-          sessionId,
-          card.cardNumber.substr(0, 6)
-        );
+          card.cardBrand = await getPagseguroCardBrand(
+            sessionId,
+            card.cardNumber.substr(0, 6)
+          );
 
-        let cardToken = (await getPagseguroCardToken(
-          sessionId,
-          card,
-          planPeriod.value
-        )).data.token;
+          let cardToken = (await getPagseguroCardToken(
+            sessionId,
+            card,
+            planPeriod.value
+          )).data.token;
 
-        let cardHolder = JSON.parse(req.query.cardHolder);
+          let cardHolder = JSON.parse(req.query.cardHolder);
 
-        let sign = {
-          plan: planPeriod.code,
-          reference: plan.id + '_' + user.id,
-          sender: {
-            name: user.name,
-            email: 'teste@sandbox.pagseguro.com.br' || user.email,
-            hash: req.query.senderHash,
-            phone: {
-              areaCode: phone.areaCode || user.phone.areaCode,
-              number: phone.number || user.phone.number
+          let sign = {
+            plan: planPeriod.code,
+            reference: plan.id + '_' + user.id,
+            sender: {
+              name: user.name,
+              email: 'teste@sandbox.pagseguro.com.br' || user.email,
+              hash: req.query.senderHash,
+              phone: {
+                areaCode: phone.areaCode || user.phone.areaCode,
+                number: phone.number || user.phone.number
+              },
+              address: {
+                street: address.street || user.address.street,
+                number: address.number || user.address.number,
+                complement: address.complement || user.address.complement,
+                district: address.district || user.address.district,
+                city: address.city || user.address.city,
+                state: address.state || user.address.state,
+                country: 'BRA',
+                postalCode: address.postalCode || user.address.postalCode
+              },
+              documents: [
+                {
+                  type: 'CPF',
+                  value: user.cpf
+                }
+              ]
             },
-            address: {
-              street: address.street || user.address.street,
-              number: address.number || user.address.number,
-              complement: address.complement || user.address.complement,
-              district: address.district || user.address.district,
-              city: address.city || user.address.city,
-              state: address.state || user.address.state,
-              country: 'BRA',
-              postalCode: address.postalCode || user.address.postalCode
-            },
-            documents: [
-              {
-                type: 'CPF',
-                value: user.cpf
-              }
-            ]
-          },
-          paymentMethod: {
-            type: 'CREDITCARD',
-            creditCard: {
-              token: cardToken,
-              holder: {
-                name: cardHolder.name,
-                birthDate:
-                  cardHolder.birthDate ||
-                  moment(user.birthday, 'YYYY-MM-DD').format('DD/MM/YYYY'),
-                documents: [
-                  {
-                    type: 'CPF',
-                    value: cardHolder.cpf || user.cpf
+            paymentMethod: {
+              type: 'CREDITCARD',
+              creditCard: {
+                token: cardToken,
+                holder: {
+                  name: cardHolder.name,
+                  birthDate:
+                    cardHolder.birthDate ||
+                    moment(user.birthday, 'YYYY-MM-DD').format('DD/MM/YYYY'),
+                  documents: [
+                    {
+                      type: 'CPF',
+                      value: cardHolder.cpf || user.cpf
+                    }
+                  ],
+                  phone: {
+                    areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
+                    number: cardHolder.phone.number || user.phone.number
                   }
-                ],
-                phone: {
-                  areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
-                  number: cardHolder.phone.number || user.phone.number
                 }
               }
             }
-          }
-        };
+          };
 
-        axios({
-          method: 'POST',
-          url: url + '/pre-approvals',
-          params: auth,
-          headers: {
-            accept:
-              'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
-            'content-type': 'application/json'
-          },
-          data: sign
-        }).then((response) => {
+          let preApproval = await axios({
+            method: 'POST',
+            url: url + '/pre-approvals',
+            params: auth,
+            headers: {
+              accept:
+                'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
+              'content-type': 'application/json'
+            },
+            data: sign
+          })
+
+          return {
+            user: user,
+            preApprovalCode: preApproval.data.code
+          }
+        })
+        .then((response) => {
+          let user = response.user;
+          let preApprovalCode = response.preApprovalCode;
           const batch = admin.firestore().batch();
           createUserPagseguroPlan(
             batch,
             user,
             plan,
             req.query.planPeriod,
-            response.data.code
+            preApprovalCode
           );
           let userPlan = {
             name: plan.name,
             id: plan.id,
             period: req.query.planPeriod,
             value: planPeriod.value,
-            pagseguroPlanCode: response.data.code,
+            pagseguroPlanCode: preApprovalCode,
             manualOperations: plan.manualOperations,
             syncExchanges: plan.syncExchanges,
             status: 'active'
@@ -615,38 +690,85 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
               content: response.data
             });
           });
+        })
+        .catch((error) => {
+          let message = errorMessageHandler(error);
+          return res.status(200).send({ type: 'error', message: message });
         });
-      })
-      .catch((error) => {
-        let message = 'Contate o suporte';
-        console.error(error);
-        // console.log("Type", typeof(error));
-        // console.log(error.message);
-        // console.log(error.response);
-        // console.log(error.response.statusText);
-        // console.log(error.response.data);
-        // console.log(error.response.data.errors);
+    } catch (error) {
+      let message = errorMessageHandler(error);
+      return res.status(200).send({ type: 'error', message: message });
+    }
+  });
+});
 
-        if (typeof error === 'string') {
-          message = error;
-        } else if (error instanceof Error) {
-          message = error.message;
-          if (
-            error.response &&
-            error.response.data &&
-            error.response.data.errors
-          ) {
-            console.error(error.respose.data.errors);
-          }
-          if (error.response && error.response.statusText) {
-            console.error(error.response.statusText);
-          }
-        } else {
-          const json = xmlParser.xml2js(error.response.data, { compact: true });
-          message = json.errors.error.message._text;
-          console.error(message);
+exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    let promises = [];
+    promises.push(getFreePlan());
+    promises.push(getUser(req.query.userId));
+
+    Promise.all(promises)
+      .then(async (response) => {
+        let plan = response[0];
+        let user = response[1];
+
+        if (user.plan.name === 'Free') {
+          throw new Error('Não há nenhuma assinatura ativa');
         }
 
+        let url = 'https://ws.sandbox.pagseguro.uol.com.br';
+        let auth = {
+          email: 'paulorenato.cpb@gmail.com',
+          token: '3D19535BD4EF4FFCB5533DF1F7E64D6B'
+        };
+
+        await axios({
+          method: 'PUT',
+          url:
+            url + '/pre-approvals/' + user.plan.pagseguroPlanCode + '/cancel',
+          params: auth,
+          headers: {
+            accept:
+              'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
+            'content-type': 'application/json'
+          }
+        });
+
+        return {
+          plan: plan,
+          user: user
+        };
+      })
+      .then((response) => {
+        let user = response.user;
+        let plan = response.plan;
+        const batch = admin.firestore().batch();
+
+        cancelUserPagseguroPlan(batch, user);
+        let userPlan = {
+          name: plan.name,
+          id: plan.id,
+          period: '',
+          value: '',
+          pagseguroPlanCode: '',
+          manualOperations: plan.manualOperations,
+          syncExchanges: plan.syncExchanges,
+          status: 'active'
+        };
+
+        updateUserPlan(batch, user.id, userPlan);
+        return batch
+          .commit()
+          .then(() => {
+            return res.status(200).send({
+              type: 'success',
+              message: 'Assinatura cancelada com sucesso!'
+            });
+          })
+      })
+      .catch((error) => {
+        let message = errorMessageHandler(error);
         return res.status(200).send({ type: 'error', message: message });
       });
   });

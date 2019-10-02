@@ -44,7 +44,7 @@
         <span class="hidden-sm-and-down">Cripto RF</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn v-if="user.plan.name !== 'Pro'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>
+      <v-btn v-if="user && user.plan.name !== 'Pro'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" to="/profile" icon>
