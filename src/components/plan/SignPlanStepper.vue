@@ -288,6 +288,11 @@ export default {
   props: {
     visible: Boolean
   },
+  watch: {
+    creating() {
+      this.dialog = this.creating;
+    }
+  },
   computed: {
     selectedPlan() {
       return this.$store.getters.plans.find(plan => {
@@ -437,7 +442,7 @@ export default {
 
   methods: {
     onSignPlan() {
-      // if (this.$refs.form.validate()) {
+      if (this.$refs.form.validate()) {
         this.$store
           .dispatch("signUserToPlan", {
             plan: this.selectedPlan,
@@ -473,11 +478,8 @@ export default {
               }
             }
           })
-          .then(() => {
-            this.dialog = false;
-          });
       }
-    // }
+    }
   }
 };
 </script>
