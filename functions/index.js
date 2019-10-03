@@ -5,6 +5,10 @@ const Binance = require('binance-api-node').default;
 const moment = require('moment');
 const xmlParser = require('xml-js');
 const axios = require('axios');
+const conf = require('./env');
+const env = conf.sandbox;
+// const env = process.env.NODE_ENV == 'production' ? conf.producao : conf.sandbox;
+// const env = process.env.APP_ENV == 'production' ? conf.producao : conf.sandbox;
 
 moment.locale('pt-br');
 admin.initializeApp();
@@ -48,7 +52,7 @@ function getFreePlan() {
   return admin
     .firestore()
     .collection('plans')
-    .where('name', '==', 'Free')
+    .where('type', '==', 'free')
     .where('status', '==', 'active')
     .get()
     .then((planSnapshot) => {
@@ -67,7 +71,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     let user = await getUser(req.query.userId);
 
-    if (!user.plan.syncExchanges) {
+    if (!user.plan.benefits.syncExchanges) {
       throw new Error('Operação não autorizada para o plano contratado');
     }
 
@@ -432,11 +436,14 @@ function formatDate(date) {
   return moment(date).format('DDMMYYYY');
 }
 
-function setPagseguroSession(url, auth) {
+function setPagseguroSession() {
   return axios({
     method: 'POST',
-    url: url + '/v2/sessions',
-    params: auth
+    url: env.providers.session,
+    params: {
+      email: env.email,
+      token: env.token
+    }
   }).then((response) => {
     return xmlParser.xml2js(response.data, { compact: true }).session.id._text;
   });
@@ -445,7 +452,7 @@ function setPagseguroSession(url, auth) {
 function getPagseguroCardBrand(sessionId, cardBin) {
   return axios({
     method: 'GET',
-    url: 'https://df.uol.com.br/df-fe/mvc/creditcard/v1/getBin',
+    url: env.providers.cardBrand,
     params: {
       tk: sessionId,
       creditCard: cardBin
@@ -461,12 +468,18 @@ function getPagseguroCardBrand(sessionId, cardBin) {
 function getPagseguroCardToken(sessionId, card, value) {
   return axios({
     method: 'POST',
-    url: 'https://df.uol.com.br/v2/cards',
+    url: env.providers.cardToken,
     params: {
       sessionId: sessionId,
       amount: value,
       ...card
     }
+  })
+  .then((response) => {
+    if(!response.data) {
+      throw new Error("Cartão inválido");
+    }
+    return response.data.token;
   });
 }
 
@@ -487,29 +500,72 @@ function updateUserPlan(batch, userId, plan) {
   return batch.update(userDoc, { plan: plan });
 }
 
-function createUserPagseguroPlan(batch, user, plan, period, pagseguroPlanCode) {
+function cancelUserPaidPlan(batch, userId, freePlan, cancelDatetime) {
+  let userDoc = admin
+    .firestore()
+    .collection('users')
+    .doc(userId);
+
+  return batch.update(userDoc, { plan: freePlan, "preApproval.cancelDatetime": cancelDatetime });
+}
+
+function updateUserPreApproval(batch, userId, preApproval) {
+  let userDoc = admin
+    .firestore()
+    .collection('users')
+    .doc(userId);
+
+  return batch.update(userDoc, { preApproval: preApproval });
+}
+
+function updateUserPlanStatus(batch, userId, status) {
+  let userDoc = admin
+    .firestore()
+    .collection('users')
+    .doc(userId);
+
+  return batch.update(userDoc, { "plan.status": status });
+}
+
+function createUserPagseguroPlan(batch, user, plan, preApprovalCode, signDatetime) {
   let userPagseguroPlanDoc = admin
     .firestore()
     .collection('user_pagseguro_plan')
-    .doc(user.id + '_' + pagseguroPlanCode);
+    .doc(user.id + '_' + plan.id + "_" + signDatetime);
 
   return batch.set(userPagseguroPlanDoc, {
     userId: user.id,
-    systemPlanId: plan.id,
-    period: period,
-    pagseguroPlanCode: pagseguroPlanCode
+    plan: {
+      ...plan
+    },
+    transactionStatus: "waiting",
+    preApprovalCode: preApprovalCode,
+    signDatetime: signDatetime
   });
 }
 
-function cancelUserPagseguroPlan(batch, user) {
+function updateUserPagseguroPlan(batch, transactionPlanReference, transactionCode, transactionStatus, planStatus) {
   let userPagseguroPlanDoc = admin
     .firestore()
     .collection('user_pagseguro_plan')
-    .doc(user.id + '_' + user.plan.pagseguroPlanCode);
+    .doc(transactionPlanReference);
+
+  return batch.update(userPagseguroPlanDoc, {
+    transactionCode: transactionCode,
+    transactionStatus: transactionStatus,
+    status: planStatus
+  });
+}
+
+function cancelUserPagseguroPlan(batch, userId, planId, preApprovalDatetime, cancelDatetime) {
+  let userPagseguroPlanDoc = admin
+    .firestore()
+    .collection('user_pagseguro_plan')
+    .doc(userId + '_' + planId + "_" + preApprovalDatetime);
 
   return batch.update(userPagseguroPlanDoc, {
     status: 'canceled',
-    cancelDate: moment().format('x')
+    cancelDatetime: cancelDatetime
   });
 }
 
@@ -547,9 +603,6 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
   return cors(req, res, () => {
     try {
       let plan = JSON.parse(req.query.plan);
-      let planPeriod =
-        req.query.planPeriod === 'monthly' ? plan.monthly : plan.yearly;
-
       let promises = [];
       promises.push(getPlan(plan.id));
       promises.push(getUser(req.query.userId));
@@ -570,13 +623,7 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
             updateUserAddressAndPhone(user.id, address, phone);
           }
 
-          let url = 'https://ws.sandbox.pagseguro.uol.com.br';
-          let auth = {
-            email: 'paulorenato.cpb@gmail.com',
-            token: '3D19535BD4EF4FFCB5533DF1F7E64D6B'
-          };
-
-          let sessionId = await setPagseguroSession(url, auth);
+          let sessionId = await setPagseguroSession();
           let card = JSON.parse(req.query.card);
 
           card.cardBrand = await getPagseguroCardBrand(
@@ -584,20 +631,21 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
             card.cardNumber.substr(0, 6)
           );
 
-          let cardToken = (await getPagseguroCardToken(
+          let cardToken = await getPagseguroCardToken(
             sessionId,
             card,
-            planPeriod.value
-          )).data.token;
+            plan.price.toString()
+          );
 
           let cardHolder = JSON.parse(req.query.cardHolder);
 
+          let signDatetime = moment().format("x");
           let sign = {
-            plan: planPeriod.code,
-            reference: plan.id + '_' + user.id,
+            plan: plan.id,
+            reference: user.id + '_' + plan.id + "_" + signDatetime,
             sender: {
               name: user.name,
-              email: 'teste@sandbox.pagseguro.com.br' || user.email,
+              email:  user.email,
               hash: req.query.senderHash,
               phone: {
                 areaCode: phone.areaCode || user.phone.areaCode,
@@ -646,8 +694,11 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
 
           let preApproval = await axios({
             method: 'POST',
-            url: url + '/pre-approvals',
-            params: auth,
+            url: env.providers.preApproval,
+            params: {
+              email: env.email,
+              token: env.token
+            },
             headers: {
               accept:
                 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
@@ -658,35 +709,37 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
 
           return {
             user: user,
-            preApprovalCode: preApproval.data.code
+            plan: plan,
+            preApprovalCode: preApproval.data.code,
+            signDatetime: signDatetime
           }
         })
         .then((response) => {
           let user = response.user;
+          let plan = response.plan;
           let preApprovalCode = response.preApprovalCode;
+          let signDatetime = response.signDatetime;
+
           const batch = admin.firestore().batch();
+
           createUserPagseguroPlan(
             batch,
             user,
             plan,
-            req.query.planPeriod,
-            preApprovalCode
+            preApprovalCode,
+            signDatetime
           );
-          let userPlan = {
-            name: plan.name,
-            id: plan.id,
-            period: req.query.planPeriod,
-            value: planPeriod.value,
-            pagseguroPlanCode: preApprovalCode,
-            manualOperations: plan.manualOperations,
-            syncExchanges: plan.syncExchanges,
-            status: 'active'
+
+          let preApproval = {
+            code: preApprovalCode,
+            datetime: signDatetime
           };
-          updateUserPlan(batch, user.id, userPlan);
+          updateUserPreApproval(batch, user.id, preApproval);
+
           batch.commit().then((response) => {
             return res.status(200).send({
               type: 'success',
-              message: 'Plano aderido com sucesso!',
+              message: 'Assinatura enviada para análise de pagamento junto ao PagSeguro',
               content: response.data
             });
           });
@@ -710,24 +763,21 @@ exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
 
     Promise.all(promises)
       .then(async (response) => {
-        let plan = response[0];
+        let freePlan = response[0];
         let user = response[1];
 
-        if (user.plan.name === 'Free') {
+        if (user.plan.type === 'free') {
           throw new Error('Não há nenhuma assinatura ativa');
         }
 
-        let url = 'https://ws.sandbox.pagseguro.uol.com.br';
-        let auth = {
-          email: 'paulorenato.cpb@gmail.com',
-          token: '3D19535BD4EF4FFCB5533DF1F7E64D6B'
-        };
-
+        let cancelDatetime = moment().format("x");
         await axios({
           method: 'PUT',
-          url:
-            url + '/pre-approvals/' + user.plan.pagseguroPlanCode + '/cancel',
-          params: auth,
+          url: env.providers.preApproval + "/" + user.preApproval.code + '/cancel',
+          params: {
+            email: env.email,
+            token: env.token
+          },
           headers: {
             accept:
               'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
@@ -736,28 +786,20 @@ exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
         });
 
         return {
-          plan: plan,
-          user: user
+          user: user,
+          freePlan: freePlan,
+          cancelDatetime: cancelDatetime
         };
       })
       .then((response) => {
         let user = response.user;
-        let plan = response.plan;
+        let freePlan = response.freePlan;
+        let cancelDatetime = response.cancelDatetime;
         const batch = admin.firestore().batch();
 
-        cancelUserPagseguroPlan(batch, user);
-        let userPlan = {
-          name: plan.name,
-          id: plan.id,
-          period: '',
-          value: '',
-          pagseguroPlanCode: '',
-          manualOperations: plan.manualOperations,
-          syncExchanges: plan.syncExchanges,
-          status: 'active'
-        };
+        cancelUserPagseguroPlan(batch, user.id, user.plan.id, user.preApproval.datetime, cancelDatetime);
+        cancelUserPaidPlan(batch, user.id, freePlan, cancelDatetime);
 
-        updateUserPlan(batch, user.id, userPlan);
         return batch
           .commit()
           .then(() => {
@@ -773,6 +815,109 @@ exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
       });
   });
 });
+
+function pagseguroTransactionStatus(code) {
+  let status = {
+    transactionStatus: "",
+    planStatus: ""
+  }
+  switch (code) {
+    case "1":
+      status.transactionStatus = "aguardandoPagamento";
+      status.planStatus = "waitingPayment";
+      break;
+    case "2":
+        status.transactionStatus = "emAnalise";
+        status.planStatus = "waitingPayment";
+        break;
+    case "3":
+        status.transactionStatus = "paga";
+        status.planStatus = "active";
+        break;
+    case "4":
+      status.transactionStatus = "disponivel";
+      status.planStatus = "active";
+      break;
+    case "5":
+      status.transactionStatus = "emDisputa";
+      status.planStatus = "waitingPayment";
+      break;
+    case "6":
+      status.transactionStatus = "devolvida";
+      status.planStatus = "canceled";
+      break;
+    case "7":
+      status.transactionStatus = "cancelada";
+      status.planStatus = "canceled";
+      break;
+    case "8":
+      status.transactionStatus = "debitado";
+      status.planStatus = "canceled";
+      break;
+    case "9":
+      status.transactionStatus = "retencaoTemporaria";
+      status.planStatus = "waitingPayment";
+      break;
+  }
+
+  return status;
+}
+
+exports.pagseguroNotificationHandler = functions.https.onRequest((req, res) => {
+  return cors(req, res, () => {
+    let notificationCode = req.body.notificationCode;
+
+    axios({
+      method: 'GET',
+      url: env.notificationURL + notificationCode,
+      params: {
+        email: env.email,
+        token: env.token
+      },
+      headers: {
+        'content-type': 'application/json'
+      }
+    })
+    .then(async response => {
+      let notification = xmlParser.xml2js(response.data, { compact: true });
+      let transactionPlanReference = notification.transaction.reference._text;
+      let transactionCode = notification.transaction.code._text;
+      let transactionStatus = notification.transaction.status._text;
+      let userId = transactionPlanReference.split("_")[0];
+      let planId = transactionPlanReference.split("_")[1];
+      let status = pagseguroTransactionStatus(transactionStatus);
+
+      const batch = admin.firestore().batch();
+
+      updateUserPagseguroPlan(batch, transactionPlanReference, transactionCode, status.transactionStatus, status.planStatus);
+
+      if(status.planStatus === "active") {
+        let plan = await getPlan(planId);
+        updateUserPlan(batch, userId, plan);
+      }
+      else {
+        let freePlan = await getFreePlan();
+
+        if(status.planStatus === "canceled"){
+          cancelUserPaidPlan(batch, userId, freePlan, moment().format("x"));
+        }
+        else {
+          updateUserPlan(batch, userId, freePlan);
+        }
+      }
+
+      batch.commit()
+      .then(() => {
+        return res.status(200).send(status);
+      })
+    })
+    .catch((error) => {
+      let message = errorMessageHandler(error);
+      return res.status(200).send({ type: 'error', message: message });
+    });
+
+  });
+})
 
 // function createPagseguroPlan() {
 // let planData = {
