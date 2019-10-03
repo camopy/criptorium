@@ -1,6 +1,6 @@
 <template>
   <v-container fluid>
-    <v-layout v-if="user && !user.plan.syncExchanges">
+    <v-layout v-if="user && user.plan.benefits.syncExchanges">
       <Exchanges />
           <v-btn
             bottom

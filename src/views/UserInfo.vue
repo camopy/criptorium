@@ -20,13 +20,13 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn v-if="user.plan.name !== 'Free'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
+                  <v-btn v-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
                   <div
                     class="text--primary"
-                  >Plano {{user.plan.name}}{{user.plan.name === "Free" ? "" : user.plan.period === "yearly" ? " - Anual" : " - Mensal"}}</div>
-                  <div v-if="user.plan.name !== 'Free'">R${{user.plan.period === "monthly" ? user.plan.value : user.plan.value/12}}/mês</div>
+                  >Plano {{user.plan.name}}{{user.plan.type === "free" ? "" : user.plan.period === "yearly" ? " - Anual" : " - Mensal"}}</div>
+                  <div v-if="user.plan.type === 'paid'">R${{user.plan.period === "monthly" ? user.plan.price : user.plan.price/12}}/mês</div>
                 </v-flex>
                 <v-flex xs12>
                   <v-divider class="my-3"></v-divider>
@@ -38,7 +38,7 @@
                   <div
                     class="text--primary"
                   >{{user.plan.name}} - {{user.plan.period === "yearly" ? "Anual" : "Mensal"}}</div>
-                  <div>R${{user.plan.value/12}}/mês</div>
+                  <div>R${{user.plan.price/12}}/mês</div>
                 </v-flex>
               </v-layout>
             </v-container>

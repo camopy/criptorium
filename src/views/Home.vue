@@ -44,7 +44,7 @@
         <span class="hidden-sm-and-down">Cripto RF</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn v-if="user && user.plan.name !== 'Pro'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>
+      <v-btn v-if="user && user.plan.type === 'free'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" to="/profile" icon>
@@ -88,8 +88,8 @@ export default {
     ]
   }),
   computed: {
-    plans() {
-      return this.$store.getters.plans;
+    paidPlans() {
+      return this.$store.getters.paidPlans;
     },
     user() {
       return this.$store.getters.user;
@@ -101,8 +101,8 @@ export default {
       this.$router.push("/signin");
     },
     onUpgradeAccount() {
-      if(this.plans.length === 0) {
-        this.$store.dispatch("loadPlans");
+      if(this.paidPlans.length === 0) {
+        this.$store.dispatch("loadPaidPlans");
       }
       this.signPlanStepperDialog = !this.signPlanStepperDialog
     }

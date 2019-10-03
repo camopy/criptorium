@@ -3,25 +3,26 @@ import axios from 'axios';
 
 export default {
   state: {
-    plans: []
+    paidPlans: []
   },
   mutations: {
-    setPlans(state, payload) {
-      state.plans = payload;
+    setPaidPlans(state, payload) {
+      state.paidPlans = payload;
     }
   },
   actions: {
-    loadPlans({ commit }) {
+    loadPaidPlans({ commit }) {
       db.collection('plans')
         .where('status', '==', 'active')
+        .where('type', '==', 'paid')
         .get()
         .then(
           (querySnapshot) => {
-            let plans = querySnapshot.docs.map(function(plan) {
-              return { ...plan.data(), id: plan.id };
+            let paidPlans = querySnapshot.docs.map(function(plan) {
+                return { ...plan.data(), id: plan.id }
             });
-            commit('setPlans', plans);
-            return plans;
+            commit('setPaidPlans', paidPlans);
+            return paidPlans;
           },
           function(error) {
             console.log('Error getting plans:', error);
@@ -92,8 +93,8 @@ export default {
     }
   },
   getters: {
-    plans(state) {
-      return state.plans;
+    paidPlans(state) {
+      return state.paidPlans;
     }
   }
 };

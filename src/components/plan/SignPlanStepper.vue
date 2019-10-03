@@ -1,41 +1,26 @@
 <template>
   <v-dialog v-model="dialog" width="800px">
-    <v-overlay :value="!selectedPlan">
+    <v-overlay :value="plans.length == 0">
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>
-    <v-form v-if="selectedPlan" ref="form" v-model="valid" lazy-validation>
-      <v-stepper v-model="e6" vertical>
-        <v-stepper-step editable step="1">
-          Informações do plano
-        </v-stepper-step>
+    <v-form v-if="plans.length > 0" ref="form" v-model="valid" lazy-validation>
+      <v-stepper v-model="stepper" vertical>
+        <v-stepper-step :rules="planRules" editable step="1">Assinatura</v-stepper-step>
 
         <v-stepper-content step="1">
           <v-card color="grey lighten-3" class="mb-12">
-            <v-card-title>Plano {{selectedPlan.name}}</v-card-title>
-            <v-card-text>Tenha acesso à sincronização das operações feitas em exchanges cadastradas através da API disponibilizada por cada uma delas</v-card-text>
-          </v-card>
-          <v-btn color="primary" @click="e6 = 2">Continue</v-btn>
-          <v-btn text @click="dialog = false">Cancel</v-btn>
-        </v-stepper-content>
-
-        <v-stepper-step :rules="planPeriodRules" editable step="2">Tipo de assinatura</v-stepper-step>
-
-        <v-stepper-content step="2">
-          <v-card color="grey lighten-3" class="mb-12">
+            <v-card-title>Plano Pro</v-card-title>
             <v-card-text>
-              <v-radio-group v-model="planPeriod" column>
-                <v-radio
-                  :label="'Mensal: R$' + Number(selectedPlan.monthly.value).toFixed(2)"
-                  value="monthly"
-                ></v-radio>
-                <v-radio
-                  :label="'Anual: R$' + Number(selectedPlan.yearly.value).toFixed(2) + ' - equivalente a R$' + (Number(selectedPlan.yearly.value)/12).toFixed(2) + ' por mês'"
-                  value="yearly"
+              Tenha acesso à sincronização das operações feitas em exchanges cadastradas através da API disponibilizada por cada uma delas
+              <v-radio-group v-model="plan" column>
+                <v-radio v-for="plan in plans" :key="plan.id"
+                  :label="plan.period === 'yearly' ? 'Anual: R$' + plan.price.toFixed(2) + ' - equivalente a R$' + (plan.price/12).toFixed(2) + ' por mês' : 'Mensal: R$' + plan.price.toFixed(2)"
+                  :value="plan"
                 ></v-radio>
               </v-radio-group>
             </v-card-text>
           </v-card>
-          <v-btn color="primary" @click="e6 = 3">Continue</v-btn>
+          <v-btn color="primary" @click="stepper = 2">Continue</v-btn>
           <v-btn text @click="dialog = false">Cancel</v-btn>
         </v-stepper-content>
 
@@ -146,7 +131,7 @@
               </v-layout>
             </v-card-text>
           </v-card>
-          <v-btn color="primary" @click="e6 = 4">Continue</v-btn>
+          <v-btn color="primary" @click="stepper = 3">Continue</v-btn>
           <v-btn text @click="dialog = false">Cancel</v-btn>
         </v-stepper-content>
 
@@ -294,10 +279,8 @@ export default {
     }
   },
   computed: {
-    selectedPlan() {
-      return this.$store.getters.plans.find(plan => {
-        return plan.name === "Pro";
-      });
+    plans() {
+      return this.$store.getters.paidPlans;
     },
     user() {
       return this.$store.getters.user;
@@ -313,14 +296,14 @@ export default {
         if (!value) {
           this.$emit("close");
           this.$refs.form.reset();
-          this.e6 = 1;
-          this.planPeriod = "";
+          this.stepper = 1;
+          this.plan = "";
           this.cardHolderRadio = "";
         }
       }
     },
-    planPeriodRules() {
-      return [() => !!this.planPeriod || !!this.valid];
+    planRules() {
+      return [() => !!this.plan || !!this.valid];
     },
     userInfoRules() {
       return [
@@ -344,16 +327,16 @@ export default {
       ];
     },
     paymentMethodStepNumber() {
-      return (!this.user.address || !this.user.phone) ? 4 : 3;
+      return (!this.user.address || !this.user.phone) ? 3 : 2;
     },
     userInfoStepNumber() {
-      return (!this.user.address || !this.user.phone) ? 3 : 4;
+      return (!this.user.address || !this.user.phone) ? 2 : 3;
     }
   },
   data: () => ({
     valid: true,
-    e6: 1,
-    planPeriod: "",
+    stepper: 1,
+    plan: "",
     cardHolderRadio: "",
     phone: "",
     phoneMask: "(##)#####-####",
@@ -445,8 +428,7 @@ export default {
       if (this.$refs.form.validate()) {
         this.$store
           .dispatch("signUserToPlan", {
-            plan: this.selectedPlan,
-            planPeriod: this.planPeriod,
+            plan: this.plan,
             phone: {
               areaCode: this.phone.replace(/ /g,'').substr(0, 2),
               number: this.phone.replace(/ /g,'').substr(2)

@@ -57,8 +57,7 @@ export default {
       this.$store
         .dispatch("signoutUserFromPlan", {
           userId: this.user.id,
-          planId: this.user.plan.id,
-          pagseguroPlanCode: this.user.plan.pagseguroPlanCode
+          planId: this.user.plan.id
         })
         .then(() => {
           this.dialog = false;

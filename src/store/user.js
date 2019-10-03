@@ -83,11 +83,14 @@ export default {
                 dateCreated: moment().toISOString(),
                 plan: {
                   name: 'Free',
+                  type: 'free',
+                  status: 'active',
                   startDate: '',
                   endDate: '',
-                  syncExchanges: false,
-                  manualOperations: true,
-                  status: 'active'
+                  benefits: {
+                    syncExchanges: false,
+                    manualOperations: true,
+                  }
                 },
                 exchanges: [],
                 operations: [],
