@@ -30,6 +30,24 @@ function getUser(userId) {
     });
 }
 
+function getUserPagseguroPlan(reference) {
+  return admin
+    .firestore()
+    .collection('user_pagseguro_plan')
+    .doc(reference)
+    .get()
+    .then((planDoc) => {
+      if (!planDoc.data()) {
+        throw new Error('Plano pagseguro reference não encontrado');
+      }
+
+      return {
+        id: planDoc.id,
+        ...planDoc.data()
+      };
+    });
+}
+
 function getPlan(planId) {
   return admin
     .firestore()
@@ -118,9 +136,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
                   if (trade.time >= 1561950000000) {
                     let operationDoc = admin
                       .firestore()
-                      .collection(
-                        'users/' + req.query.userId + '/operations/'
-                      )
+                      .collection('users/' + req.query.userId + '/operations/')
                       .doc();
                     batch.set(operationDoc, {
                       ...trade,
@@ -276,7 +292,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             return whitdraws;
           },
           function(error) {
-            console.log(
+            console.error(
               'Error getting binance account whitdraw history:',
               error
             );
@@ -305,7 +321,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             });
           })
           .catch((error) => {
-            console.log(error);
+            console.error(error);
             return res.status(200).send({ type: 'error', message: error });
           });
       });
@@ -340,7 +356,7 @@ exports.generateOperationsTextFile = functions.https.onRequest((req, res) => {
           });
         },
         function(error) {
-          console.log('Error getting user operations:', error);
+          console.error('Error getting user operations:', error);
           return res.status(200).send({ type: 'error', message: error });
         }
       );
@@ -458,8 +474,8 @@ function getPagseguroCardBrand(sessionId, cardBin) {
       creditCard: cardBin
     }
   }).then((response) => {
-    if(!response.data.bin.brand) {
-      throw new Error("Cartão inválido");
+    if (!response.data.bin.brand) {
+      throw new Error('Cartão inválido');
     }
     return response.data.bin.brand.name;
   });
@@ -474,10 +490,9 @@ function getPagseguroCardToken(sessionId, card, value) {
       amount: value,
       ...card
     }
-  })
-  .then((response) => {
-    if(!response.data) {
-      throw new Error("Cartão inválido");
+  }).then((response) => {
+    if (!response.data) {
+      throw new Error('Cartão inválido');
     }
     return response.data.token;
   });
@@ -491,7 +506,16 @@ function updateUserAddressAndPhone(userId, address, phone) {
     .update({ address: address, phone: phone });
 }
 
-function updateUserPlan(batch, userId, plan) {
+function setUserPlanAndPreApproval(batch, userId, plan, preApproval) {
+  let userDoc = admin
+    .firestore()
+    .collection('users')
+    .doc(userId);
+
+  return batch.update(userDoc, { plan: plan, preApproval: preApproval });
+}
+
+function setUserPlan(batch, userId, plan) {
   let userDoc = admin
     .firestore()
     .collection('users')
@@ -500,72 +524,39 @@ function updateUserPlan(batch, userId, plan) {
   return batch.update(userDoc, { plan: plan });
 }
 
-function cancelUserPaidPlan(batch, userId, freePlan, cancelDatetime) {
-  let userDoc = admin
-    .firestore()
-    .collection('users')
-    .doc(userId);
-
-  return batch.update(userDoc, { plan: freePlan, "preApproval.cancelDatetime": cancelDatetime });
-}
-
-function updateUserPreApproval(batch, userId, preApproval) {
-  let userDoc = admin
-    .firestore()
-    .collection('users')
-    .doc(userId);
-
-  return batch.update(userDoc, { preApproval: preApproval });
-}
-
-function updateUserPlanStatus(batch, userId, status) {
-  let userDoc = admin
-    .firestore()
-    .collection('users')
-    .doc(userId);
-
-  return batch.update(userDoc, { "plan.status": status });
-}
-
-function createUserPagseguroPlan(batch, user, plan, preApprovalCode, signDatetime) {
+function setUserPagseguroPlan(batch, userId, plan, preApproval) {
   let userPagseguroPlanDoc = admin
     .firestore()
     .collection('user_pagseguro_plan')
-    .doc(user.id + '_' + plan.id + "_" + signDatetime);
+    .doc(preApproval.reference);
+
+  // if(!userPagseguroPlanDoc.exists) {
+  //   return batch.update(userPagseguroPlanDoc, preApproval);
+  // }
 
   return batch.set(userPagseguroPlanDoc, {
-    userId: user.id,
-    plan: {
-      ...plan
-    },
-    transactionStatus: "waiting",
-    preApprovalCode: preApprovalCode,
-    signDatetime: signDatetime
+    userId: userId,
+    plan: plan,
+    preApproval: preApproval
   });
 }
 
-function updateUserPagseguroPlan(batch, transactionPlanReference, transactionCode, transactionStatus, planStatus) {
-  let userPagseguroPlanDoc = admin
+function setUserPagseguroTransaction(userId, transaction, batch) {
+  let userPagseguroTransactionDoc = admin
     .firestore()
-    .collection('user_pagseguro_plan')
-    .doc(transactionPlanReference);
+    .collection('user_pagseguro_transaction')
+    .doc(transaction.code);
 
-  return batch.update(userPagseguroPlanDoc, {
-    transactionCode: transactionCode,
-    transactionStatus: transactionStatus,
-    status: planStatus
-  });
-}
+  if (batch) {
+    return batch.set(userPagseguroTransactionDoc, {
+      userId: userId,
+      ...transaction
+    });
+  }
 
-function cancelUserPagseguroPlan(batch, userId, planId, preApprovalDatetime, cancelDatetime) {
-  let userPagseguroPlanDoc = admin
-    .firestore()
-    .collection('user_pagseguro_plan')
-    .doc(userId + '_' + planId + "_" + preApprovalDatetime);
-
-  return batch.update(userPagseguroPlanDoc, {
-    status: 'canceled',
-    cancelDatetime: cancelDatetime
+  return userPagseguroTransactionDoc.set({
+    userId: userId,
+    ...transaction
   });
 }
 
@@ -607,7 +598,7 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
       promises.push(getPlan(plan.id));
       promises.push(getUser(req.query.userId));
 
-      Promise.all(promises)
+      return Promise.all(promises)
         .then(async (response) => {
           let plan = response[0];
           let user = response[1];
@@ -639,13 +630,13 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
 
           let cardHolder = JSON.parse(req.query.cardHolder);
 
-          let signDatetime = moment().format("x");
+          let signDatetime = moment().format('x');
           let sign = {
             plan: plan.id,
-            reference: user.id + '_' + plan.id + "_" + signDatetime,
+            reference: user.id + '_' + plan.id + '_' + signDatetime,
             sender: {
               name: user.name,
-              email:  user.email,
+              email: user.email,
               hash: req.query.senderHash,
               phone: {
                 areaCode: phone.areaCode || user.phone.areaCode,
@@ -705,43 +696,13 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
               'content-type': 'application/json'
             },
             data: sign
-          })
+          });
 
-          return {
-            user: user,
-            plan: plan,
-            preApprovalCode: preApproval.data.code,
-            signDatetime: signDatetime
-          }
-        })
-        .then((response) => {
-          let user = response.user;
-          let plan = response.plan;
-          let preApprovalCode = response.preApprovalCode;
-          let signDatetime = response.signDatetime;
-
-          const batch = admin.firestore().batch();
-
-          createUserPagseguroPlan(
-            batch,
-            user,
-            plan,
-            preApprovalCode,
-            signDatetime
-          );
-
-          let preApproval = {
-            code: preApprovalCode,
-            datetime: signDatetime
-          };
-          updateUserPreApproval(batch, user.id, preApproval);
-
-          batch.commit().then((response) => {
-            return res.status(200).send({
-              type: 'success',
-              message: 'Assinatura enviada para análise de pagamento junto ao PagSeguro',
-              content: response.data
-            });
+          return res.status(200).send({
+            type: 'success',
+            message:
+              'Assinatura enviada para análise de pagamento junto ao PagSeguro',
+            content: preApproval.data.code
           });
         })
         .catch((error) => {
@@ -755,214 +716,432 @@ exports.signUserToPlan = functions.https.onRequest((req, res) => {
   });
 });
 
+function pagseguroSignoutFromPlan(preApprovalCode) {
+  return axios({
+    method: 'PUT',
+    url: env.providers.preApproval + '/' + preApprovalCode + '/cancel',
+    params: {
+      email: env.email,
+      token: env.token
+    },
+    headers: {
+      accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
+      'content-type': 'application/json'
+    }
+  });
+}
+
 exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
-    let promises = [];
-    promises.push(getFreePlan());
-    promises.push(getUser(req.query.userId));
+    try {
+      let user = await getUser(req.query.userId);
 
-    Promise.all(promises)
-      .then(async (response) => {
-        let freePlan = response[0];
-        let user = response[1];
+      if (user.plan.type === 'free') {
+        throw new Error('Não há nenhuma assinatura ativa');
+      }
 
-        if (user.plan.type === 'free') {
-          throw new Error('Não há nenhuma assinatura ativa');
-        }
+      await pagseguroSignoutFromPlan(user.preApproval.code);
 
-        let cancelDatetime = moment().format("x");
-        await axios({
-          method: 'PUT',
-          url: env.providers.preApproval + "/" + user.preApproval.code + '/cancel',
-          params: {
-            email: env.email,
-            token: env.token
-          },
-          headers: {
-            accept:
-              'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
-            'content-type': 'application/json'
-          }
-        });
-
-        return {
-          user: user,
-          freePlan: freePlan,
-          cancelDatetime: cancelDatetime
-        };
-      })
-      .then((response) => {
-        let user = response.user;
-        let freePlan = response.freePlan;
-        let cancelDatetime = response.cancelDatetime;
-        const batch = admin.firestore().batch();
-
-        cancelUserPagseguroPlan(batch, user.id, user.plan.id, user.preApproval.datetime, cancelDatetime);
-        cancelUserPaidPlan(batch, user.id, freePlan, cancelDatetime);
-
-        return batch
-          .commit()
-          .then(() => {
-            return res.status(200).send({
-              type: 'success',
-              message: 'Assinatura cancelada com sucesso!'
-            });
-          })
-      })
-      .catch((error) => {
-        let message = errorMessageHandler(error);
-        return res.status(200).send({ type: 'error', message: message });
+      return res.status(200).send({
+        type: 'success',
+        message: 'Assinatura cancelada com sucesso!'
       });
+    } catch (error) {
+      let message = errorMessageHandler(error);
+      return res.status(200).send({ type: 'error', message: message });
+    }
   });
 });
 
 function pagseguroTransactionStatus(code) {
   let status = {
-    transactionStatus: "",
-    planStatus: ""
-  }
+    transactionStatus: '',
+    planStatus: ''
+  };
   switch (code) {
-    case "1":
-      status.transactionStatus = "aguardandoPagamento";
-      status.planStatus = "waitingPayment";
+    case '1':
+      status.transactionStatus = 'aguardandoPagamento';
+      status.planStatus = 'waitingPayment';
       break;
-    case "2":
-        status.transactionStatus = "emAnalise";
-        status.planStatus = "waitingPayment";
-        break;
-    case "3":
-        status.transactionStatus = "paga";
-        status.planStatus = "active";
-        break;
-    case "4":
-      status.transactionStatus = "disponivel";
-      status.planStatus = "active";
+    case '2':
+      status.transactionStatus = 'emAnalise';
+      status.planStatus = 'waitingPayment';
       break;
-    case "5":
-      status.transactionStatus = "emDisputa";
-      status.planStatus = "waitingPayment";
+    case '3':
+      status.transactionStatus = 'paga';
+      status.planStatus = 'active';
       break;
-    case "6":
-      status.transactionStatus = "devolvida";
-      status.planStatus = "canceled";
+    case '4':
+      status.transactionStatus = 'disponivel';
+      status.planStatus = 'active';
       break;
-    case "7":
-      status.transactionStatus = "cancelada";
-      status.planStatus = "canceled";
+    case '5':
+      status.transactionStatus = 'emDisputa';
+      status.planStatus = 'active';
       break;
-    case "8":
-      status.transactionStatus = "debitado";
-      status.planStatus = "canceled";
+    case '6':
+      status.transactionStatus = 'devolvida';
+      status.planStatus = 'cancelled';
       break;
-    case "9":
-      status.transactionStatus = "retencaoTemporaria";
-      status.planStatus = "waitingPayment";
+    case '7':
+      status.transactionStatus = 'cancelada';
+      status.planStatus = 'cancelled';
+      break;
+    case '8':
+      status.transactionStatus = 'debitado';
+      status.planStatus = 'cancelled';
+      break;
+    case '9':
+      status.transactionStatus = 'retencaoTemporaria';
+      status.planStatus = 'active';
       break;
   }
 
   return status;
 }
 
+function getPagseguroPreApprovalNotification(notificationCode) {
+  return axios({
+    method: 'GET',
+    url: env.preApprovalsNotificationURL + notificationCode,
+    params: {
+      email: env.email,
+      token: env.token
+    },
+    headers: {
+      'content-type': 'application/json'
+    }
+  }).then(async (response) => {
+    return xmlParser.xml2js(response.data, { compact: true });
+  });
+}
+
+async function preApprovalNotificationHandler(notificationCode) {
+  try {
+    let notification = await getPagseguroPreApprovalNotification(
+      notificationCode
+    );
+    let reference = notification.preApproval.reference._text;
+    let preApproval = {
+      code: notification.preApproval.code._text,
+      status: notification.preApproval.status._text.toLowerCase(),
+      dateTime: reference.split('_')[2],
+      reference: reference
+    };
+    let userId = reference.split('_')[0];
+    let planId = reference.split('_')[1];
+
+    if(preApproval.status === "payment_method_change") {
+      pagseguroSignoutFromPlan(preApproval.code);
+      return notification;
+    }
+
+    const batch = admin.firestore().batch();
+
+    if(["initiated", "pending"].includes(preApproval.status)) {
+      setUserPagseguroPlan(batch, userId, await getPlan(planId), preApproval);
+      setUserPlanAndPreApproval(batch, userId, await getFreePlan(), preApproval);
+    }
+    else if (preApproval.status === "active") {
+      let plan = await getPlan(planId);
+      setUserPagseguroPlan(batch, userId, plan, preApproval);
+      setUserPlanAndPreApproval(batch, userId, plan, preApproval);
+    }
+    else if ([
+      'cancelled',
+      'cancelled_by_receiver',
+      'cancelled_by_sender',
+      'expired'
+    ].includes(preApproval.status)) {
+      let cancelDatetime = moment().format('x');
+      setUserPagseguroPlan(batch, userId, await getPlan(planId), {
+        ...preApproval,
+        cancelDatetime: cancelDatetime
+      });
+      setUserPlanAndPreApproval(batch, userId, await getFreePlan(), {
+        ...preApproval,
+        cancelDatetime: cancelDatetime
+      });
+    }
+    else if (preApproval.status === "suspended") {
+      let suspendDatetime = moment().format('x');
+      setUserPagseguroPlan(batch, userId, await getPlan(planId), {
+        ...preApproval,
+        suspendDatetime: suspendDatetime
+      });
+      setUserPlanAndPreApproval(batch, userId, await getFreePlan(), {
+        ...preApproval,
+        suspendDatetime: suspendDatetime
+      });
+    }
+
+    return batch.commit().then(() => {
+      return notification;
+    });
+  } catch (error) {
+    let message = errorMessageHandler(error);
+    return { type: 'error', message: message };
+  }
+}
+
+function pagseguroPaymentType(code) {
+  switch (code) {
+    case '1':
+      return 'Cartão de Crédito';
+    case '2':
+      return 'Boleto';
+    case '3':
+      return 'Débito Online';
+    case '4':
+      return 'Saldo PagSeguro';
+    case '5':
+      return 'Oi Paggo';
+    case '6':
+      return 'Depósito em conta PagSeguro';
+    case '7':
+      return 'Depósito';
+  }
+}
+
+function pagseguroPaymentTypeBrand(code) {
+  switch (code) {
+    case '101':
+      return 'Cartão de crédito Visa';
+    case '102':
+      return 'Cartão de crédito MasterCard';
+    case '103':
+      return 'Cartão de crédito American Express';
+    case '104':
+      return 'Cartão de crédito Diners';
+    case '105':
+      return 'Cartão de crédito Hipercard';
+    case '106':
+      return 'Cartão de crédito Aura';
+    case '107':
+      return 'Cartão de crédito Elo';
+    case '108':
+      return 'Cartão de crédito PLENOCard';
+    case '109':
+      return 'Cartão de crédito PersonalCard';
+    case '110':
+      return 'Cartão de crédito JCB';
+    case '111':
+      return 'Cartão de crédito Discover';
+    case '112':
+      return 'Cartão de crédito BrasilCard';
+    case '113':
+      return 'Cartão de crédito FORTBRASIL';
+    case '114':
+      return 'Cartão de crédito CARDBAN';
+    case '115':
+      return 'Cartão de crédito VALECARD';
+    case '116':
+      return 'Cartão de crédito Cabal';
+    case '117':
+      return 'Cartão de crédito Mais!';
+    case '118':
+      return 'Cartão de crédito Avista';
+    case '119':
+      return 'Cartão de crédito GRANDCARD';
+    case '120':
+      return 'Cartão de crédito Sorocred';
+    case '122':
+      return 'Cartão de crédito Up Policard';
+    case '123':
+      return 'Cartão de crédito Banese Card';
+    case '201':
+      return 'Boleto Bradesco';
+    case '202':
+      return 'Boleto Santander';
+    case '301':
+      return 'Débito online Bradesco';
+    case '302':
+      return 'Débito online Itaú';
+    case '303':
+      return 'Débito online Unibanco';
+    case '304':
+      return 'Débito online Banco do Brasil';
+    case '305':
+      return 'Débito online Banco Real';
+    case '306':
+      return 'Débito online Banrisul';
+    case '307':
+      return 'Débito online HSBC';
+    case '401':
+      return 'Saldo PagSeguro';
+    case '501':
+      return 'Oi Paggo';
+    case '701':
+      return 'Depósito em conta - Banco do Brasil';
+  }
+}
+
+function getPagseguroTransactionNotification(notificationCode) {
+  return axios({
+    method: 'GET',
+    url: env.transactionsNotificationURL + notificationCode,
+    params: {
+      email: env.email,
+      token: env.token
+    },
+    headers: {
+      'content-type': 'application/json'
+    }
+  }).then(async (response) => {
+    return xmlParser.xml2js(response.data, { compact: true });
+  });
+}
+
+function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
+  return axios({
+    method: 'GET',
+    url: env.providers.preApproval + "/" + preApprovalCode + "/payment-orders",
+    params: {
+      email: env.email,
+      token: env.token
+    },
+    headers: {
+      accept:
+                'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
+      'content-type': 'application/json'
+    }
+  }).then(async (response) => {
+    return response.data;
+  });
+}
+
+async function transactionNotificationHandler(notificationCode) {
+  try {
+    let notification = await getPagseguroTransactionNotification(
+      notificationCode
+    );
+    let transactionPlanReference = notification.transaction.reference._text;
+    let transactionCode = notification.transaction.code._text;
+    let transactionStatus = notification.transaction.status._text;
+    let userId = transactionPlanReference.split('_')[0];
+    let planId = transactionPlanReference.split('_')[1];
+    let status = pagseguroTransactionStatus(transactionStatus);
+
+    let transaction = {
+      code: transactionCode,
+      date: moment(notification.transaction.date._text).format("x"),
+      lastEventDate: moment(notification.transaction.lastEventDate._text).format("x"),
+      status: status.transactionStatus,
+      cancelationSource: notification.transaction.cancelationSource
+        ? notification.transaction.cancelationSource._text
+        : '',
+      reference: transactionPlanReference,
+      paymentMethod: {
+        type: pagseguroPaymentType(
+          notification.transaction.paymentMethod.type._text
+        ),
+        brand: pagseguroPaymentTypeBrand(
+          notification.transaction.paymentMethod.code._text
+        )
+      },
+      value: Number(notification.transaction.grossAmount._text),
+      discount: Number(notification.transaction.discountAmount._text),
+      creditorFees: {
+        installmentFeeAmount: Number(
+          notification.transaction.creditorFees.installmentFeeAmount._text
+        ),
+        intermediationRateAmount: Number(
+          notification.transaction.creditorFees.intermediationRateAmount._text
+        ),
+        intermediationFeeAmount: Number(
+          notification.transaction.creditorFees.intermediationFeeAmount._text
+        )
+      },
+      netAmount: Number(notification.transaction.netAmount._text),
+      escrowEndDate: notification.transaction.escrowEndDate
+        ? moment(notification.transaction.escrowEndDate._text).format("x")
+        : '',
+      sender: {
+        name: notification.transaction.sender.name._text,
+        phone: {
+          areaCode: notification.transaction.sender.phone.areaCode._text,
+          number: notification.transaction.sender.phone.number._text
+        }
+      }
+    };
+
+    if (status.planStatus === 'cancelled') {
+      setUserPagseguroTransaction(userId, transaction);
+      let userPagseguroPlan = await getUserPagseguroPlan(
+        transactionPlanReference
+      );
+      pagseguroSignoutFromPlan(userPagseguroPlan.preApproval.code);
+      return notification;
+    }
+
+    const batch = admin.firestore().batch();
+    setUserPagseguroTransaction(userId, transaction, batch);
+    setUserPlan(
+      batch,
+      userId,
+      status.planStatus === 'active'
+        ? await getPlan(planId)
+        : await getFreePlan()
+    );
+
+    return batch.commit().then(() => {
+      return notification;
+    });
+  } catch (error) {
+    let message = errorMessageHandler(error);
+    return { type: 'error', message: message };
+  }
+}
+
 exports.pagseguroNotificationHandler = functions.https.onRequest((req, res) => {
-  return cors(req, res, () => {
+  return cors(req, res, async () => {
+    let notificationType = req.body.notificationType;
     let notificationCode = req.body.notificationCode;
 
-    axios({
-      method: 'GET',
-      url: env.notificationURL + notificationCode,
-      params: {
-        email: env.email,
-        token: env.token
-      },
-      headers: {
-        'content-type': 'application/json'
-      }
-    })
-    .then(async response => {
-      let notification = xmlParser.xml2js(response.data, { compact: true });
-      let transactionPlanReference = notification.transaction.reference._text;
-      let transactionCode = notification.transaction.code._text;
-      let transactionStatus = notification.transaction.status._text;
-      let userId = transactionPlanReference.split("_")[0];
-      let planId = transactionPlanReference.split("_")[1];
-      let status = pagseguroTransactionStatus(transactionStatus);
+    let notification =
+      notificationType === 'transaction'
+        ? await transactionNotificationHandler(notificationCode)
+        : await preApprovalNotificationHandler(notificationCode);
 
-      const batch = admin.firestore().batch();
-
-      updateUserPagseguroPlan(batch, transactionPlanReference, transactionCode, status.transactionStatus, status.planStatus);
-
-      if(status.planStatus === "active") {
-        let plan = await getPlan(planId);
-        updateUserPlan(batch, userId, plan);
-      }
-      else {
-        let freePlan = await getFreePlan();
-
-        if(status.planStatus === "canceled"){
-          cancelUserPaidPlan(batch, userId, freePlan, moment().format("x"));
-        }
-        else {
-          updateUserPlan(batch, userId, freePlan);
-        }
-      }
-
-      batch.commit()
-      .then(() => {
-        return res.status(200).send(status);
-      })
-    })
-    .catch((error) => {
-      let message = errorMessageHandler(error);
-      return res.status(200).send({ type: 'error', message: message });
-    });
-
+    return res.status(200).send(notification);
   });
-})
+});
 
-// function createPagseguroPlan() {
-// let planData = {
-//   _declaration: {
-//     _attributes: {
-//       version: '1.0',
-//       encoding: 'ISO-8859-1',
-//       standalone: 'yes'
-//     }
-//   },
-//   preApprovalRequest: {
-//     preApproval: {
-//       name: 'Pro Anual',
-//       charge: 'AUTO',
-//       reference: 'pro-yearly',
-//       period: 'YEARLY',
-//       amountPerPayment: "165.00"
-//     }
-//   }
-// };
+function createPagseguroPlan() {
+  let planData = {
+    _declaration: {
+      _attributes: {
+        version: '1.0',
+        encoding: 'ISO-8859-1',
+        standalone: 'yes'
+      }
+    },
+    preApprovalRequest: {
+      preApproval: {
+        name: 'Pro Anual',
+        charge: 'AUTO',
+        reference: 'pro-yearly',
+        period: 'YEARLY',
+        amountPerPayment: "165.00"
+      }
+    }
+  };
 
-// axios({
-//   method: 'POST',
-//   url: url + '/pre-approvals/request/',
-//   params: auth,
-//   headers: {
-//     accept:
-//       'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
-//     'Content-Type': 'application/xml;charset=ISO-8859-1'
-//   },
-//   data: xmlParser.js2xml(planData, { compact: true })
-// })
-//   .then((data) => {
-//     const json = xmlParser.xml2js(data.data, { compact: true });
-//     return res
-//       .status(200)
-//       .send({
-//         type: 'success',
-//         message: 'Plano criado com sucesso!',
-//         content: json
-//       });
-//   })
-//   .catch((err) => {
-//     const json = xmlParser.xml2js(err.response.data, { compact: true });
-//     console.error(json.errors.error.message._text);
-//     return res.status(200).send({ type: 'error', message: json.errors.error.message._text });
-//   });
-// }
+  axios({
+    method: 'POST',
+    url: env.providers.preApproval + '/request/',
+    params: {
+      email: env.email,
+      token: env.token
+    },
+    headers: {
+      accept:
+        'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
+      'Content-Type': 'application/xml;charset=ISO-8859-1'
+    },
+    data: xmlParser.js2xml(planData, { compact: true })
+  })
+  .then((data) => {
+    return xmlParser.xml2js(data.data, { compact: true });
+  })
+}
