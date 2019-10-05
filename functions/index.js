@@ -992,6 +992,7 @@ function getPagseguroTransactionNotification(notificationCode) {
   });
 }
 
+// eslint-disable-next-line no-unused-vars
 function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
   return axios({
     method: 'GET',
@@ -1107,6 +1108,7 @@ exports.pagseguroNotificationHandler = functions.https.onRequest((req, res) => {
   });
 });
 
+// eslint-disable-next-line no-unused-vars
 function createPagseguroPlan() {
   let planData = {
     _declaration: {
