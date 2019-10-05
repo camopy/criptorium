@@ -425,7 +425,7 @@ export default {
 
   methods: {
     onSignPlan() {
-      // if (this.$refs.form.validate()) {
+      if (this.$refs.form.validate()) {
         this.$store
           .dispatch("signUserToPlan", {
             plan: this.plan,
@@ -460,7 +460,7 @@ export default {
               }
             }
           })
-      // }
+      }
     }
   }
 };
