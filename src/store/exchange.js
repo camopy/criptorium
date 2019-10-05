@@ -1,7 +1,6 @@
 // import * as firebase from "firebase";
-// import { db } from "../main";
 // import * as moment from "moment";
-import axios from 'axios';
+import { functions } from "../main";
 
 export default {
   state: {
@@ -13,7 +12,7 @@ export default {
     }
   },
   actions: {
-    syncBinanceOperations({ commit, getters }, payload) {
+    async syncBinanceOperations({ commit, getters }, payload) {
       commit('setCreating', true);
       let systemExchange = getters.systemExchanges.find(exchange => {
         return exchange.id === payload.exchangeId;
@@ -29,21 +28,17 @@ export default {
         exchangeCountryCode: systemExchange.countryCode
       };
 
-      axios
-        .get(
-          'https://us-central1-cripto-rf-dev.cloudfunctions.net/syncBinanceOperations',
-          { params: keys }
-        )
-        .then((response) => {
-          console.log(response.data);
-          commit('setSnackbarContent', {type: response.data.type, message: response.data.message});
-          commit('setCreating', false);
-        })
-        .catch(error => {
-          console.log(error);
+      try {
+        let response = await functions.httpsCallable("syncBinanceOperations")(keys);
+
+        console.log(response.data);
+        commit('setSnackbarContent', {type: response.data.type, message: response.data.message});
+        commit('setCreating', false);
+      } catch (error) {
+        console.log(error);
           commit('setSnackbarContent', {type: "error", message: error});
           commit('setCreating', false);
-        });
+      }
     }
   },
   getters: {

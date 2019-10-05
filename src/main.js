@@ -6,6 +6,7 @@ import vuetify from './plugins/vuetify';
 import moment from "moment";
 import firebase from "firebase/app";
 import "firebase/firestore";
+import "firebase/functions";
 
 import AlertCmp from "./components/shared/Alert";
 
@@ -40,3 +41,4 @@ new Vue({
 }).$mount('#app')
 
 export const db = firebase.firestore();
+export const functions = firebase.functions();

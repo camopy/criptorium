@@ -13,6 +13,15 @@ const env = conf.sandbox;
 moment.locale('pt-br');
 admin.initializeApp();
 
+function userAuthenthication(userId, auth) {
+  if (!auth) {
+    throw new Error("Authentication Required!");
+  }
+  if(userId !== auth.uid) {
+    throw new Error("Usuário não autorizado");
+  }
+}
+
 function getUser(userId) {
   return admin
     .firestore()
@@ -85,30 +94,46 @@ function getFreePlan() {
     });
 }
 
-exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    let user = await getUser(req.query.userId);
+function getUserOperationsByDatetimeRange(userId, startTimestamp, endTimestamp) {
+  return admin
+  .firestore()
+  .collection('users/' + userId + '/operations')
+  .where('time', '>=', startTimestamp)
+  .where('time', '<=', endTimestamp)
+  .get()
+  .then(
+    (querySnapshot) => {
+      return querySnapshot.docs.map(function(operation) {
+        return formatOperation({ ...operation.data(), id: operation.id });
+      });
+    })
+}
+
+exports.syncBinanceOperations = functions.https.onCall(async (data, context) => {
+  try {
+    userAuthenthication(data.userId, context.auth);
+    let user = await getUser(data.userId);
 
     if (!user.plan.benefits.syncExchanges) {
       throw new Error('Operação não autorizada para o plano contratado');
     }
 
     const client = Binance({
-      apiKey: req.query.apiKey,
-      apiSecret: req.query.privateKey
+      apiKey: data.apiKey,
+      apiSecret: data.privateKey
     });
 
     client.exchangeInfo({ useServerTime: true }).then((exchangeInfo) => {
       const promises = [];
       const timeoutPromises = [];
       const batch = admin.firestore().batch();
-      const lastOperations = req.query.lastOperations
-        ? JSON.parse(req.query.lastOperations)
+      const lastOperations = data.lastOperations
+        ? JSON.parse(data.lastOperations)
         : false;
-      const exchangeId = req.query.exchangeId;
-      const exchangeName = req.query.exchangeName;
-      const exchangeUrl = req.query.exchangeUrl;
-      const exchangeCountryCode = req.query.exchangeCountryCode;
+      const exchangeId = data.exchangeId;
+      const exchangeName = data.exchangeName;
+      const exchangeUrl = data.exchangeUrl;
+      const exchangeCountryCode = data.exchangeCountryCode;
       const syncTimestamp = moment().format('x');
       exchangeInfo.symbols.forEach((symbolInfo, index) => {
         let timeoutPromise = new Promise((resolve) =>
@@ -136,7 +161,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
                   if (trade.time >= 1561950000000) {
                     let operationDoc = admin
                       .firestore()
-                      .collection('users/' + req.query.userId + '/operations/')
+                      .collection('users/' + data.userId + '/operations/')
                       .doc();
                     batch.set(operationDoc, {
                       ...trade,
@@ -154,7 +179,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
                   let lastOperation = admin
                     .firestore()
                     .collection(
-                      'users/' + req.query.userId + '/lastOperations/'
+                      'users/' + data.userId + '/lastOperations/'
                     )
                     .doc('binance');
                   let symbolObj = {};
@@ -201,7 +226,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
               delete deposit.amount;
               let operationDoc = admin
                 .firestore()
-                .collection('users/' + req.query.userId + '/operations/')
+                .collection('users/' + data.userId + '/operations/')
                 .doc();
               batch.set(operationDoc, {
                 ...deposit,
@@ -218,7 +243,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             if (deposits.depositList.length > 0) {
               let lastOperation = admin
                 .firestore()
-                .collection('users/' + req.query.userId + '/lastOperations/')
+                .collection('users/' + data.userId + '/lastOperations/')
                 .doc('binance');
               batch.set(
                 lastOperation,
@@ -263,7 +288,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
               delete whitdraw.amount;
               let operationDoc = admin
                 .firestore()
-                .collection('users/' + req.query.userId + '/operations/')
+                .collection('users/' + data.userId + '/operations/')
                 .doc();
               batch.set(operationDoc, {
                 ...whitdraw,
@@ -280,7 +305,7 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
             if (whitdraws.withdrawList.length > 0) {
               let lastOperation = admin
                 .firestore()
-                .collection('users/' + req.query.userId + '/lastOperations/')
+                .collection('users/' + data.userId + '/lastOperations/')
                 .doc('binance');
               batch.set(
                 lastOperation,
@@ -307,60 +332,52 @@ exports.syncBinanceOperations = functions.https.onRequest((req, res) => {
               admin
                 .firestore()
                 .collection('users')
-                .doc(req.query.userId)
+                .doc(data.userId)
                 .collection('exchanges')
                 .doc(exchangeId)
                 .update({ lastSync: syncTimestamp })
                 .then((response) => {
-                  return res.status(200).send({
+                  return {
                     type: 'success',
                     message: 'Operações sincronizadas com sucesso!',
                     content: response
-                  });
+                  };
                 });
             });
           })
-          .catch((error) => {
+          .catch(error => {
             console.error(error);
-            return res.status(200).send({ type: 'error', message: error });
+            return { type: 'error', message: error };
           });
       });
     });
-  });
+  } catch(error) {
+    console.error(error);
+    return { type: 'error', message: error };
+  }
 });
 
-exports.generateOperationsTextFile = functions.https.onRequest((req, res) => {
-  return cors(req, res, () => {
-    let startTimestamp = Number(moment(req.query.date, 'YYYY-MM').format('x'));
+exports.generateOperationsTextFile = functions.https.onCall(async (data, context) => {
+  try {
+    userAuthenthication(data.userId, context.auth);
+    let startTimestamp = Number(moment(data.date, 'YYYY-MM').format('x'));
     let endTimestamp = Number(
-      moment(req.query.date, 'YYYY-MM')
+      moment(data.date, 'YYYY-MM')
         .endOf('month')
         .format('x')
     );
 
-    admin
-      .firestore()
-      .collection('users/' + req.query.userId + '/operations')
-      .where('time', '>=', startTimestamp)
-      .where('time', '<=', endTimestamp)
-      .get()
-      .then(
-        (querySnapshot) => {
-          let operations = querySnapshot.docs.map(function(operation) {
-            return formatOperation({ ...operation.data(), id: operation.id });
-          });
-          return res.status(200).send({
-            type: 'success',
-            message: 'Arquivo gerado com sucesso!',
-            content: operations
-          });
-        },
-        function(error) {
-          console.error('Error getting user operations:', error);
-          return res.status(200).send({ type: 'error', message: error });
-        }
-      );
-  });
+    let operations = await getUserOperationsByDatetimeRange(data.userId, startTimestamp, endTimestamp);
+
+    return {
+      type: 'success',
+      message: 'Arquivo gerado com sucesso!',
+      content: operations
+    };
+  } catch(error) {
+    console.error('Error getting user operations:', error);
+    return { type: 'error', message: error };
+  }
 });
 
 function formatOperation(operation) {
@@ -590,130 +607,126 @@ function errorMessageHandler(error) {
   return message;
 }
 
-exports.signUserToPlan = functions.https.onRequest((req, res) => {
-  return cors(req, res, () => {
-    try {
-      let plan = JSON.parse(req.query.plan);
-      let promises = [];
-      promises.push(getPlan(plan.id));
-      promises.push(getUser(req.query.userId));
+exports.signUserToPlan = functions.https.onCall((data, context) => {
+  try {
+    userAuthenthication(data.userId, context.auth);
 
-      return Promise.all(promises)
-        .then(async (response) => {
-          let plan = response[0];
-          let user = response[1];
+    let promises = [];
+    promises.push(getPlan(data.plan.id));
+    promises.push(getUser(data.userId));
 
-          if (user.plan.id === plan.id) {
-            throw new Error('Usuário já aderiu ao plano');
-          }
+    return Promise.all(promises)
+      .then(async (response) => {
+        let plan = response[0];
+        let user = response[1];
 
-          let address = JSON.parse(req.query.address);
-          let phone = JSON.parse(req.query.phone);
+        if (user.plan.type === "paid") {
+          throw new Error('Usuário já possui um plano aderido');
+        }
 
-          if (!user.address || !user.phone) {
-            updateUserAddressAndPhone(user.id, address, phone);
-          }
+        if (!user.address || !user.phone) {
+          updateUserAddressAndPhone(user.id, data.address, data.phone);
+        }
 
-          let sessionId = await setPagseguroSession();
-          let card = JSON.parse(req.query.card);
+        let sessionId = await setPagseguroSession();
+        let card = data.card;
 
-          card.cardBrand = await getPagseguroCardBrand(
-            sessionId,
-            card.cardNumber.substr(0, 6)
-          );
+        card.cardBrand = await getPagseguroCardBrand(
+          sessionId,
+          card.cardNumber.substr(0, 6)
+        );
 
-          let cardToken = await getPagseguroCardToken(
-            sessionId,
-            card,
-            plan.price.toString()
-          );
+        let cardToken = await getPagseguroCardToken(
+          sessionId,
+          card,
+          plan.price.toString()
+        );
 
-          let cardHolder = JSON.parse(req.query.cardHolder);
+        let cardHolder = data.cardHolder;
 
-          let signDatetime = moment().format('x');
-          let sign = {
-            plan: plan.id,
-            reference: user.id + '_' + plan.id + '_' + signDatetime,
-            sender: {
-              name: user.name,
-              email: user.email,
-              hash: req.query.senderHash,
-              phone: {
-                areaCode: phone.areaCode || user.phone.areaCode,
-                number: phone.number || user.phone.number
-              },
-              address: {
-                street: address.street || user.address.street,
-                number: address.number || user.address.number,
-                complement: address.complement || user.address.complement,
-                district: address.district || user.address.district,
-                city: address.city || user.address.city,
-                state: address.state || user.address.state,
-                country: 'BRA',
-                postalCode: address.postalCode || user.address.postalCode
-              },
-              documents: [
-                {
-                  type: 'CPF',
-                  value: user.cpf
-                }
-              ]
+        let signDatetime = moment().format('x');
+        let sign = {
+          plan: plan.id,
+          reference: user.id + '_' + plan.id + '_' + signDatetime,
+          sender: {
+            name: user.name,
+            email: user.email,
+            hash: data.senderHash,
+            phone: {
+              areaCode: data.phone.areaCode || user.phone.areaCode,
+              number: data.phone.number || user.phone.number
             },
-            paymentMethod: {
-              type: 'CREDITCARD',
-              creditCard: {
-                token: cardToken,
-                holder: {
-                  name: cardHolder.name,
-                  birthDate:
-                    cardHolder.birthDate ||
-                    moment(user.birthday, 'YYYY-MM-DD').format('DD/MM/YYYY'),
-                  documents: [
-                    {
-                      type: 'CPF',
-                      value: cardHolder.cpf || user.cpf
-                    }
-                  ],
-                  phone: {
-                    areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
-                    number: cardHolder.phone.number || user.phone.number
+            address: {
+              street: data.address.street || user.address.street,
+              number: data.address.number || user.address.number,
+              complement: data.address.complement || user.address.complement,
+              district: data.address.district || user.address.district,
+              city: data.address.city || user.address.city,
+              state: data.address.state || user.address.state,
+              country: 'BRA',
+              postalCode: data.address.postalCode || user.address.postalCode
+            },
+            documents: [
+              {
+                type: 'CPF',
+                value: user.cpf
+              }
+            ]
+          },
+          paymentMethod: {
+            type: 'CREDITCARD',
+            creditCard: {
+              token: cardToken,
+              holder: {
+                name: cardHolder.name,
+                birthDate:
+                  cardHolder.birthDate ||
+                  moment(user.birthday, 'YYYY-MM-DD').format('DD/MM/YYYY'),
+                documents: [
+                  {
+                    type: 'CPF',
+                    value: cardHolder.cpf || user.cpf
                   }
+                ],
+                phone: {
+                  areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
+                  number: cardHolder.phone.number || user.phone.number
                 }
               }
             }
-          };
+          }
+        };
 
-          let preApproval = await axios({
-            method: 'POST',
-            url: env.providers.preApproval,
-            params: {
-              email: env.email,
-              token: env.token
-            },
-            headers: {
-              accept:
-                'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
-              'content-type': 'application/json'
-            },
-            data: sign
-          });
-
-          return res.status(200).send({
-            type: 'success',
-            message:
-              'Assinatura enviada para análise de pagamento junto ao PagSeguro',
-            content: preApproval.data.code
-          });
-        })
-        .catch((error) => {
-          let message = errorMessageHandler(error);
-          return res.status(200).send({ type: 'error', message: message });
+        let preApproval = await axios({
+          method: 'POST',
+          url: env.providers.preApproval,
+          params: {
+            email: env.email,
+            token: env.token
+          },
+          headers: {
+            accept:
+              'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
+            'content-type': 'application/json'
+          },
+          data: sign
         });
-    } catch (error) {
-      let message = errorMessageHandler(error);
-      return res.status(200).send({ type: 'error', message: message });
-    }
-  });
+
+        return {
+          type: 'success',
+          message:
+            'Assinatura enviada para análise de pagamento junto ao PagSeguro',
+          content: preApproval.data.code
+        };
+      })
+      .catch((error) => {
+        let message = errorMessageHandler(error);
+        return { type: 'error', message: message };
+      });
+  } catch (error) {
+    let message = errorMessageHandler(error);
+    return { type: 'error', message: message };
+  }
 });
 
 function pagseguroSignoutFromPlan(preApprovalCode) {
@@ -731,26 +744,26 @@ function pagseguroSignoutFromPlan(preApprovalCode) {
   });
 }
 
-exports.signoutUserFromPlan = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    try {
-      let user = await getUser(req.query.userId);
+exports.signoutUserFromPlan = functions.https.onCall(async (data, context) => {
+  try {
+    userAuthenthication(data.userId, context.auth);
 
-      if (user.plan.type === 'free') {
-        throw new Error('Não há nenhuma assinatura ativa');
-      }
+    let user = await getUser(data.userId);
 
-      await pagseguroSignoutFromPlan(user.preApproval.code);
-
-      return res.status(200).send({
-        type: 'success',
-        message: 'Assinatura cancelada com sucesso!'
-      });
-    } catch (error) {
-      let message = errorMessageHandler(error);
-      return res.status(200).send({ type: 'error', message: message });
+    if (user.plan.type === 'free') {
+      throw new Error('Não há nenhuma assinatura ativa');
     }
-  });
+
+    await pagseguroSignoutFromPlan(user.preApproval.code);
+
+    return {
+      type: 'success',
+      message: 'Assinatura cancelada com sucesso!'
+    };
+  } catch (error) {
+    let message = errorMessageHandler(error);
+    return { type: 'error', message: message };
+  }
 });
 
 function pagseguroTransactionStatus(code) {

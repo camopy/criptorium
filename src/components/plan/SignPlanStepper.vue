@@ -247,7 +247,7 @@
               </v-layout>
             </v-card-text>
           </v-card>
-          <v-btn color="primary" :loading="creating" :disabled="!valid" @click="onSignPlan">Assinar</v-btn>
+          <v-btn color="primary" :loading="signingUserToPagseguroPlan" :disabled="!valid" @click="onSignPlan">Assinar</v-btn>
           <v-btn text @click="dialog = false">Cancel</v-btn>
         </v-stepper-content>
       </v-stepper>
@@ -274,8 +274,8 @@ export default {
     visible: Boolean
   },
   watch: {
-    creating() {
-      this.dialog = this.creating;
+    signingUserToPagseguroPlan() {
+      this.dialog = this.signingUserToPagseguroPlan;
     }
   },
   computed: {
@@ -285,8 +285,8 @@ export default {
     user() {
       return this.$store.getters.user;
     },
-    creating() {
-      return this.$store.getters.creating;
+    signingUserToPagseguroPlan() {
+      return this.$store.getters.signingUserToPagseguroPlan;
     },
     dialog: {
       get() {
