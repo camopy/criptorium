@@ -8,14 +8,10 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import "firebase/functions";
 
-import AlertCmp from "./components/shared/Alert";
-
 moment.locale("pt-br");
 Vue.prototype.$moment = moment;
 
 Vue.config.productionTip = false
-
-Vue.component("app-alert", AlertCmp);
 
 new Vue({
   router,

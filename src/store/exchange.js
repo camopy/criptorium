@@ -30,8 +30,9 @@ export default {
 
       try {
         let response = await functions.httpsCallable("syncBinanceOperations")(keys);
-
-        console.log(response.data);
+        if(response.data.error) {
+          throw response.data.error;
+        }
         commit('setSnackbarContent', {type: response.data.type, message: response.data.message});
         commit('setCreating', false);
       } catch (error) {

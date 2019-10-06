@@ -1,7 +1,7 @@
 import firebase from 'firebase/app';
 import 'firebase/auth';
 import { db } from '../main';
-import * as moment from 'moment';
+import { functions } from '../main';
 
 export default {
   state: {
@@ -28,98 +28,29 @@ export default {
     }
   },
   actions: {
-    signUserUp({ commit }, payload) {
-      commit('setLoading', true);
-      commit('clearError');
+    async signUserUp({ commit }, payload) {
+      commit('setCreating', true);
 
-      const promises = [];
-
-      let checkEmail = db
-        .collection('users')
-        .where('email', '==', payload.email)
-        .get()
-        .then(function(doc) {
-          if (!doc.empty) {
-            return Promise.reject(new Error('Email já cadastrado'));
-          }
-        })
-        .catch((error) => {
-          commit('setLoading', false);
-          commit('setError', error);
-          console.log(error);
-          return Promise.reject(error);
+      try {
+        let response = await functions.httpsCallable("signUserUp")(payload);
+        if(response.data.type === "error") {
+          throw response.data.message;
+        }
+        commit('setSnackbarContent', {
+          type: response.data.type,
+          message: response.data.message
         });
-      promises.push(checkEmail);
-
-      let checkCpf = db
-        .collection('users')
-        .where('cpf', '==', payload.cpf)
-        .get()
-        .then(function(doc) {
-          if (!doc.empty) {
-            return Promise.reject(new Error('CPF já cadastrado'));
-          }
-        })
-        .catch((error) => {
-          commit('setLoading', false);
-          commit('setError', error);
-          console.log(error);
-          return Promise.reject(error);
+        commit('setUser', response.data.content);
+        commit('setCreating', false);
+      }
+      catch (error) {
+        console.error(error);
+        commit('setCreating', false);
+        commit('setSnackbarContent', {
+          type: 'error',
+          message: error
         });
-      promises.push(checkCpf);
-
-      Promise.all(promises)
-        .then(() => {
-          firebase
-            .auth()
-            .createUserWithEmailAndPassword(payload.email, payload.password)
-            .then((auth) => {
-              const newUser = {
-                id: auth.user.uid,
-                name: payload.name,
-                email: payload.email,
-                cpf: payload.cpf,
-                birthday: payload.birthday,
-                dateCreated: moment().toISOString(),
-                plan: {
-                  name: 'Free',
-                  type: 'free',
-                  status: 'active',
-                  startDate: '',
-                  endDate: '',
-                  benefits: {
-                    syncExchanges: false,
-                    manualOperations: true,
-                  }
-                },
-                exchanges: [],
-                operations: [],
-                lastOperations: []
-              };
-              commit('setUser', newUser);
-
-              db.collection('users')
-                .doc(auth.user.uid)
-                .set(newUser)
-                .then(function() {
-                  commit('setLoading', false);
-                  console.log('User added');
-                })
-                .catch(function(error) {
-                  commit('setLoading', false);
-                  console.error('Error adding user: ', error);
-                });
-            })
-            .catch((error) => {
-              commit('setLoading', false);
-              commit('setError', error);
-              console.log(error);
-            });
-        })
-        .catch((error) => {
-          commit('setLoading', false);
-          console.error('Error signing user up: ', error);
-        });
+      }
     },
     signUserIn({ commit }, payload) {
       commit('setLoading', true);

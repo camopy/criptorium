@@ -1,17 +1,26 @@
 <template>
   <v-app>
     <router-view></router-view>
+    <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
   </v-app>
 </template>
 
 <script>
+import AppSnackbar from "@/components/shared/Snackbar";
+
   export default {
+    components: {
+      AppSnackbar
+    },
     computed: {
       userIsAuthenticated() {
         return (
           this.$store.getters.user !== null &&
           this.$store.getters.user !== undefined
         );
+      },
+      snackbarContent() {
+        return this.$store.getters.snackbarContent;
       }
     },
     mounted() {

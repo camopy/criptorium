@@ -44,12 +44,15 @@ export default {
       // eslint-disable-next-line no-undef
       PagSeguroDirectPayment.onSenderHashReady(async function(response) {
         if (response.status == 'error') {
-          throw new Error(response.message);
+          console.error(response);
+          throw "Falha ao comunicar com o PagSeguro";
         }
 
         try {
           let signoutResponse = await functions.httpsCallable("signUserToPlan")({ ...params, senderHash: response.senderHash });
-          console.log(signoutResponse.data);
+          if(signoutResponse.data.error) {
+            throw signoutResponse.data.error;
+          }
           commit('setSnackbarContent', {
             type: signoutResponse.data.type,
             message: signoutResponse.data.message
@@ -60,7 +63,7 @@ export default {
           console.error(error);
           commit('setSnackbarContent', {
             type: 'error',
-            message: error.message
+            message: error
           });
           commit('setSigningUserToPagseguroPlan', false);
         }
@@ -71,7 +74,9 @@ export default {
 
       try {
         const response = await functions.httpsCallable('signoutUserFromPlan')(payload);
-        console.log(response.data);
+        if(response.data.error) {
+          throw response.data.error;
+        }
         commit('setSnackbarContent', {
           type: response.data.type,
           message: response.data.message
@@ -82,7 +87,7 @@ export default {
         console.error(error);
         commit('setSnackbarContent', {
           type: 'error',
-          message: error.message
+          message: error
         });
         commit('setUpdating', false);
       }

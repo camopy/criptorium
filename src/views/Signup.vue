@@ -2,14 +2,6 @@
   <v-app>
     <v-content>
       <v-container fluid>
-        <v-layout v-if="error" align-center justify-center>
-          <v-flex xs12 sm8 md4>
-            <app-alert
-              @dismissed="onDismissed"
-              :text="error.message"
-            ></app-alert>
-          </v-flex>
-        </v-layout>
         <v-layout align-center justify-center>
           <v-flex xs12 sm8 md4>
             <v-card class="elevation-12">
@@ -119,8 +111,8 @@
                 <v-spacer></v-spacer>
                 <v-btn
                   text
-                  :disabled="!valid || loading"
-                  :loading="loading"
+                  :disabled="!valid || creating"
+                  :loading="creating"
                   @click="onSignUp"
                   color="primary"
                   >Cadastrar</v-btn
@@ -180,11 +172,8 @@ export default {
     user() {
       return this.$store.getters.user;
     },
-    error() {
-      return this.$store.getters.error;
-    },
-    loading() {
-      return this.$store.getters.loading;
+    creating() {
+      return this.$store.getters.creating;
     },
     computedDateFormatted() {
       return this.formatDate(this.birthday);
@@ -211,9 +200,6 @@ export default {
           password: this.password
         });
       }
-    },
-    onDismissed() {
-      this.$store.dispatch("clearError");
     },
     save(date) {
       this.$refs.dateMenu.save(date);

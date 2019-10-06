@@ -46,7 +46,6 @@
           </v-card-text>
         </v-card>
       </v-flex>
-      <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
     </v-layout>
     <CancelPlanDialog :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
   </v-container>
@@ -55,13 +54,11 @@
 <script>
 import Date from "@/mixins/Date";
 import CancelPlanDialog from "@/components/plan/CancelPlanDialog";
-import AppSnackbar from "@/components/shared/Snackbar";
 
 export default {
   mixins: [Date],
   components: {
     CancelPlanDialog,
-    AppSnackbar
   },
   data: () => ({
     cancelPlanDialog: false
@@ -72,9 +69,6 @@ export default {
     },
     birthday() {
       return this.formatDate(this.$store.getters.user.birthday);
-    },
-    snackbarContent() {
-      return this.$store.getters.snackbarContent;
     }
   }
 };

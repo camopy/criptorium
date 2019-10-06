@@ -102,19 +102,16 @@
         </v-container>
       </v-flex>
     </v-layout>
-    <AppSnackbar v-if="snackbarContent" :content="snackbarContent"/>
     <GenerateOperationsTextFileDialog :visible="generateOperationsTextFileDialog" @close="generateOperationsTextFileDialog = false"></GenerateOperationsTextFileDialog>
   </v-container>
 </template>
 
 <script>
 import Date from "@/mixins/Date";
-import AppSnackbar from "@/components/shared/Snackbar";
 import GenerateOperationsTextFileDialog from "@/components/operation/GenerateOperationsTextFileDialog";
 
 export default {
   components: {
-    AppSnackbar,
     GenerateOperationsTextFileDialog
   },
   mixins: [Date],
@@ -124,9 +121,6 @@ export default {
     });
   },
   watch: {
-    // snackbarContent(value) {
-    //   console.log('changed', value);
-    // },
     bottom(bottom) {
       if (bottom) {
         if (this.date) {
@@ -159,9 +153,6 @@ export default {
     },
     loading() {
       return this.$store.getters.loading;
-    },
-    snackbarContent() {
-      return this.$store.getters.snackbarContent;
     },
     computedDateFormatted() {
       return this.formatDateToMonth(this.date);

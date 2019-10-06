@@ -26,7 +26,9 @@ export default {
 
       try {
         let response = await functions.httpsCallable("generateOperationsTextFile")(params);
-        console.log(response.data);
+        if(response.data.error) {
+          throw response.data.error;
+        }
         let blob = new Blob([
           JSON.stringify(response.data.content)
             .replace(/[[\]"]+/g, '')
@@ -39,7 +41,7 @@ export default {
         commit('setCreating', false);
       }
       catch (error) {
-        console.log(error);
+        console.error(error);
         commit('setSnackbarContent', { type: "error", message: error });
         commit('setCreating', false);
       }
