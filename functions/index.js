@@ -66,18 +66,6 @@ async function createAuthUser(user) {
   }
 }
 
-function checkUserEmailAlreadyUsed(email) {
-  admin.firestore()
-    .collection('users')
-    .where('email', '==', email)
-    .get()
-    .then(function(doc) {
-      if (!doc.empty) {
-        throw 'Email já cadastrado';
-      }
-    })
-}
-
 function checkUserCpfAlreadyUsed(cpf) {
   return admin.firestore()
     .collection('users')
@@ -118,6 +106,57 @@ function handleErrors(error) {
   }
 
   return { error: message };
+}
+
+function getUserExchange(userId, exchangeId) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection("exchanges")
+    .doc(exchangeId)
+    .get()
+    .then((exchangeDoc) => {
+      if (!exchangeDoc.data()) {
+        throw new Error('User exchange not found');
+      }
+
+      return {
+        id: exchangeDoc.id,
+        ...exchangeDoc.data()
+      };
+    });
+}
+
+function getUserLastOperations(userId, exchangeId) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection("lastOperations")
+    .doc(exchangeId)
+    .get()
+    .then((lastOperationsDoc) => {
+      return lastOperationsDoc.data();
+    });
+}
+
+function getSystemExchange(exchangeId) {
+  return admin
+    .firestore()
+    .collection('exchanges')
+    .doc(exchangeId)
+    .get()
+    .then((exchangeDoc) => {
+      if (!exchangeDoc.data()) {
+        throw new Error('System exchange not found');
+      }
+
+      return {
+        id: exchangeDoc.id,
+        ...exchangeDoc.data()
+      };
+    });
 }
 
 function getUserPagseguroPlan(reference) {
@@ -349,6 +388,46 @@ function setUserPlan(batch, userId, plan) {
     .doc(userId);
 
   return batch.update(userDoc, { plan: plan });
+}
+
+function setUserOperation(userId, operation, batch) {
+  let operationDoc = admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection("operations")
+    .doc();
+
+    if(!batch) {
+      return operationDoc.set(operation);
+    }
+
+  return batch.set(operationDoc, operation);
+}
+
+function setUserLastOperation(userId, exchangeId, operation, batch, merge) {
+  let lastOperation = admin
+    .firestore()
+    .collection(
+      'users/' + userId + '/lastOperations/'
+    )
+    .doc(exchangeId);
+
+    if(!batch) {
+      return lastOperation.set(operation, { merge: merge });
+    }
+
+    return batch.set(lastOperation, operation, { merge: merge})
+}
+
+function updateUserExchange(userId, exchangeId, data) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection('exchanges')
+    .doc(exchangeId)
+    .update(data)
 }
 
 function setUserPagseguroPlan(batch, userId, plan, preApproval) {
@@ -777,248 +856,210 @@ async function transactionNotificationHandler(notificationCode) {
   }
 }
 
-exports.syncBinanceOperations = functions.https.onCall(async (data, context) => {
+async function syncBinanceTrades(client, lastOperations, userId, systemExchange, batch) {
+  const timeoutPromises = [];
+
+  let exchangeInfo = await client.exchangeInfo({ useServerTime: true });
+
+  exchangeInfo.symbols.forEach((symbolInfo, index) => {
+    let timeoutPromise = new Promise((resolve, reject) =>
+      setTimeout(async () => {
+        let symbol = symbolInfo.symbol;
+        let baseAsset = symbolInfo.baseAsset;
+        let quoteAsset = symbolInfo.quoteAsset;
+
+        let tradeParams = {
+          symbol: symbol,
+          useServerTime: true,
+          // recvWindow: 10000000
+        };
+        let lastOperation = lastOperations
+          ? lastOperations[symbol] || false
+          : false;
+
+        if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
+
+        client.myTrades(tradeParams)
+        .then(trades => {
+          let lastTradeId = '';
+          trades.forEach((trade) => {
+            lastTradeId = trade.id;
+            if (trade.time >= 1561950000000) {
+              setUserOperation(userId, {
+                ...trade,
+                baseAsset: baseAsset,
+                quoteAsset: quoteAsset,
+                exchangeName: systemExchange.name,
+                exchangeUrl: systemExchange.url,
+                exchangeCountryCode: systemExchange.countryCode,
+                type: 'trade'
+              }, batch)
+            }
+          });
+
+          if (trades.length > 0) {
+            let symbolObj = {};
+            symbolObj[symbol] = { trade: lastTradeId };
+            setUserLastOperation(userId, systemExchange.id, symbolObj, batch, true)
+          }
+
+          resolve();
+        }, function(error) {
+            reject("Binance trades: " + error);
+          });
+      }, 500 * index)
+    );
+    timeoutPromises.push(timeoutPromise);
+  });
+
+  return Promise.all(timeoutPromises);
+}
+
+async function syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch) {
+  let depositParams = {
+    startTime: 1561950000000,
+    useServerTime: true,
+    // recvWindow: 10000000
+  };
+  let lastDeposit = lastOperations
+    ? lastOperations.deposit || false
+    : false;
+
+  if (lastDeposit) depositParams.startTime = lastDeposit + 1;
+
+  let response = await client.depositHistory(depositParams);
+
+  if(!response.success) {
+    throw new Error("Binance deposits: " + response.msg);
+  }
+
+  let lastDepositTimestamp = '';
+  response.depositList.forEach((deposit) => {
+    lastDepositTimestamp = deposit.insertTime;
+    let symbol = deposit.asset;
+    let time = deposit.insertTime;
+    let qty = deposit.amount;
+    delete deposit.asset;
+    delete deposit.insertTime;
+    delete deposit.amount;
+    setUserOperation(userId, {
+      ...deposit,
+      symbol: symbol,
+      time: time,
+      qty: qty,
+      exchangeName: systemExchange.name,
+      exchangeUrl: systemExchange.url,
+      exchangeCountryCode: systemExchange.countryCode,
+      type: 'deposit'
+    }, batch);
+  });
+
+  if (response.depositList.length > 0) {
+    setUserLastOperation(userId, systemExchange.id, {
+      deposit: lastDepositTimestamp
+    }, batch, true);
+  }
+
+  return response.depositList;
+}
+
+async function syncBinanceWhitdraws(client, lastOperations, userId, systemExchange, batch) {
+  let whitdrawParams = {
+    startTime: 1561950000000,
+    useServerTime: true,
+    // recvWindow: 10000000
+  };
+  let lastWhitdraw = lastOperations
+    ? lastOperations.whitdraw || false
+    : false;
+
+  if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
+
+  let response = await client.withdrawHistory(whitdrawParams);
+
+  if(!response.success) {
+    throw new Error("Binance whitdraws: " + response.msg);
+  }
+
+  let lastWhitdrawTimestamp = '';
+  response.withdrawList.forEach((whitdraw) => {
+    lastWhitdrawTimestamp = whitdraw.applyTime;
+    let symbol = whitdraw.asset;
+    let time = whitdraw.applyTime;
+    let qty = whitdraw.amount;
+    delete whitdraw.asset;
+    delete whitdraw.applyTime;
+    delete whitdraw.amount;
+    setUserOperation(userId, {
+      ...whitdraw,
+      symbol: symbol,
+      time: time,
+      qty: qty,
+      exchangeName: systemExchange.name,
+      exchangeUrl: systemExchange.url,
+      exchangeCountryCode: systemExchange.countryCode,
+      type: 'whitdraw'
+    }, batch);
+  });
+
+  if (response.withdrawList.length > 0) {
+    setUserLastOperation(userId, systemExchange.id, {
+      whitdraw: lastWhitdrawTimestamp
+    }, batch, true);
+  }
+
+  return response.withdrawList;
+}
+
+async function syncBinanceOperations(userId, userExchange, userExchangeLastOperations, systemExchange) {
+  try {
+    const client = Binance({
+      apiKey: userExchange.apiKey,
+      apiSecret: userExchange.privateKey
+    });
+
+    const batch = admin.firestore().batch();
+    const lastOperations = userExchangeLastOperations
+    ? userExchangeLastOperations
+    : false;
+
+    await syncBinanceTrades(client, lastOperations, userId, systemExchange, batch);
+
+    const promises = [];
+
+    promises.push(syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch));
+    promises.push(syncBinanceWhitdraws(client, lastOperations, userId, systemExchange, batch));
+    promises.push(updateUserExchange(userId, userExchange.id, {
+      lastSync: moment().format('x')
+    }));
+
+    await Promise.all(promises);
+
+    return batch.commit();
+  } catch(error) {
+    return handleErrors(error);
+  }
+}
+
+exports.syncExchangeOperations = functions.https.onCall(async (data, context) => {
   try {
     userAuthenthication(data.userId, context.auth);
     let user = await getUser(data.userId);
-
     if (!user.plan.benefits.syncExchanges) {
       throw 'Operação não autorizada para o plano contratado';
     }
 
-    const client = Binance({
-      apiKey: data.apiKey,
-      apiSecret: data.privateKey
-    });
+    let userExchange = await getUserExchange(data.userId, data.exchangeId);
 
-    client.exchangeInfo({ useServerTime: true }).then((exchangeInfo) => {
-      const promises = [];
-      const timeoutPromises = [];
-      const batch = admin.firestore().batch();
-      const lastOperations = data.lastOperations
-        ? JSON.parse(data.lastOperations)
-        : false;
-      const exchangeId = data.exchangeId;
-      const exchangeName = data.exchangeName;
-      const exchangeUrl = data.exchangeUrl;
-      const exchangeCountryCode = data.exchangeCountryCode;
-      const syncTimestamp = moment().format('x');
-      exchangeInfo.symbols.forEach((symbolInfo, index) => {
-        let timeoutPromise = new Promise((resolve) =>
-          setTimeout(() => {
-            let symbol = symbolInfo.symbol;
-            let baseAsset = symbolInfo.baseAsset;
-            let quoteAsset = symbolInfo.quoteAsset;
+    let response = await Promise.all([getUserLastOperations(data.userId, userExchange.exchangeId), getSystemExchange(userExchange.exchangeId)]);
 
-            let tradeParams = {
-              symbol: symbol,
-              useServerTime: true,
-              recvWindow: 10000000
-            };
-            let lastOperation = lastOperations
-              ? lastOperations[symbol] || false
-              : false;
-
-            if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
-
-            let trades = client.myTrades(tradeParams).then(
-              (trades) => {
-                let lastTradeId = '';
-                trades.forEach((trade) => {
-                  lastTradeId = trade.id;
-                  if (trade.time >= 1561950000000) {
-                    let operationDoc = admin
-                      .firestore()
-                      .collection('users/' + data.userId + '/operations/')
-                      .doc();
-                    batch.set(operationDoc, {
-                      ...trade,
-                      baseAsset: baseAsset,
-                      quoteAsset: quoteAsset,
-                      exchangeName: exchangeName,
-                      exchangeUrl: exchangeUrl,
-                      exchangeCountryCode: exchangeCountryCode,
-                      type: 'trade'
-                    });
-                  }
-                });
-
-                if (trades.length > 0) {
-                  let lastOperation = admin
-                    .firestore()
-                    .collection(
-                      'users/' + data.userId + '/lastOperations/'
-                    )
-                    .doc('binance');
-                  let symbolObj = {};
-                  symbolObj[symbol] = { trade: lastTradeId };
-                  batch.set(lastOperation, symbolObj, { merge: true });
-                }
-
-                return trades;
-              },
-              function(error) {
-                console.error('Error getting binance account trades:', error);
-                return Promise.reject(error);
-              }
-            );
-            promises.push(trades);
-            resolve();
-          }, 500 * index)
-        );
-        timeoutPromises.push(timeoutPromise);
-      });
-
-      Promise.all(timeoutPromises).then(() => {
-        let depositParams = {
-          startTime: 1561950000000,
-          useServerTime: true,
-          recvWindow: 10000000
-        };
-        let lastDeposit = lastOperations
-          ? lastOperations.deposit || false
-          : false;
-
-        if (lastDeposit) depositParams.startTime = lastDeposit + 1;
-
-        let depositHistory = client.depositHistory(depositParams).then(
-          (deposits) => {
-            let lastDepositTimestamp = '';
-            deposits.depositList.forEach((deposit) => {
-              lastDepositTimestamp = deposit.insertTime;
-              let symbol = deposit.asset;
-              let time = deposit.insertTime;
-              let qty = deposit.amount;
-              delete deposit.asset;
-              delete deposit.insertTime;
-              delete deposit.amount;
-              let operationDoc = admin
-                .firestore()
-                .collection('users/' + data.userId + '/operations/')
-                .doc();
-              batch.set(operationDoc, {
-                ...deposit,
-                symbol: symbol,
-                time: time,
-                qty: qty,
-                exchangeName: exchangeName,
-                exchangeUrl: exchangeUrl,
-                exchangeCountryCode: exchangeCountryCode,
-                type: 'deposit'
-              });
-            });
-
-            if (deposits.depositList.length > 0) {
-              let lastOperation = admin
-                .firestore()
-                .collection('users/' + data.userId + '/lastOperations/')
-                .doc('binance');
-              batch.set(
-                lastOperation,
-                { deposit: lastDepositTimestamp },
-                { merge: true }
-              );
-            }
-
-            return deposits;
-          },
-          function(error) {
-            console.error(
-              'Error getting binance account deposit history:',
-              error
-            );
-            return Promise.reject(error);
-          }
-        );
-        promises.push(depositHistory);
-
-        let whitdrawParams = {
-          startTime: 1561950000000,
-          useServerTime: true,
-          recvWindow: 10000000
-        };
-        let lastWhitdraw = lastOperations
-          ? lastOperations.whitdraw || false
-          : false;
-
-        if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
-
-        let withdrawHistory = client.withdrawHistory(whitdrawParams).then(
-          (whitdraws) => {
-            let lastWhitdrawTimestamp = '';
-            whitdraws.withdrawList.forEach((whitdraw) => {
-              lastWhitdrawTimestamp = whitdraw.applyTime;
-              let symbol = whitdraw.asset;
-              let time = whitdraw.applyTime;
-              let qty = whitdraw.amount;
-              delete whitdraw.asset;
-              delete whitdraw.applyTime;
-              delete whitdraw.amount;
-              let operationDoc = admin
-                .firestore()
-                .collection('users/' + data.userId + '/operations/')
-                .doc();
-              batch.set(operationDoc, {
-                ...whitdraw,
-                symbol: symbol,
-                time: time,
-                qty: qty,
-                exchangeName: exchangeName,
-                exchangeUrl: exchangeUrl,
-                exchangeCountryCode: exchangeCountryCode,
-                type: 'whitdraw'
-              });
-            });
-
-            if (whitdraws.withdrawList.length > 0) {
-              let lastOperation = admin
-                .firestore()
-                .collection('users/' + data.userId + '/lastOperations/')
-                .doc('binance');
-              batch.set(
-                lastOperation,
-                { whitdraw: lastWhitdrawTimestamp },
-                { merge: true }
-              );
-            }
-
-            return whitdraws;
-          },
-          function(error) {
-            console.error(
-              'Error getting binance account whitdraw history:',
-              error
-            );
-            return Promise.reject(error);
-          }
-        );
-        promises.push(withdrawHistory);
-
-        Promise.all(promises)
-          .then(() => {
-            return batch.commit().then(() => {
-              admin
-                .firestore()
-                .collection('users')
-                .doc(data.userId)
-                .collection('exchanges')
-                .doc(exchangeId)
-                .update({ lastSync: syncTimestamp })
-                .then((response) => {
-                  return {
-                    type: 'success',
-                    message: 'Operações sincronizadas com sucesso!',
-                    content: response
-                  };
-                });
-            });
-          })
-          .catch(error => {
-            return handleErrors(error);
-          });
-      });
-    });
-  } catch(error) {
+    let userExchangeLastOperations = response[0];
+    let systemExchange = response[1];
+    switch (systemExchange.id) {
+      case "binance":
+        return syncBinanceOperations(user.id, userExchange, userExchangeLastOperations, systemExchange);
+    }
+  } catch (error) {
     return handleErrors(error);
   }
 });

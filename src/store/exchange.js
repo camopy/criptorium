@@ -12,24 +12,16 @@ export default {
     }
   },
   actions: {
-    async syncBinanceOperations({ commit, getters }, payload) {
+    async syncExchangeOperations({ commit, getters }, payload) {
       commit('setCreating', true);
-      let systemExchange = getters.systemExchanges.find(exchange => {
-        return exchange.id === payload.exchangeId;
-      })
-      let keys = {
+
+      let params = {
         userId: getters.user.id,
-        apiKey: payload.apiKey,
-        privateKey: payload.privateKey,
-        lastOperations: getters.user.lastOperations.binance,
-        exchangeId: payload.id,
-        exchangeName: systemExchange.name,
-        exchangeUrl: systemExchange.url,
-        exchangeCountryCode: systemExchange.countryCode
+        exchangeId: payload.id
       };
 
       try {
-        let response = await functions.httpsCallable("syncBinanceOperations")(keys);
+        let response = await functions.httpsCallable("syncExchangeOperations")(params);
         if(response.data.error) {
           throw response.data.error;
         }

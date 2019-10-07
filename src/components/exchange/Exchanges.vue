@@ -50,10 +50,7 @@ export default {
   },
   methods: {
     onSync(exchange) {
-      switch (exchange.exchangeId) {
-        case "binance":
-          return this.$store.dispatch("syncBinanceOperations", exchange);
-      }
+      return this.$store.dispatch("syncExchangeOperations", exchange);
     }
   }
 };
