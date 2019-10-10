@@ -1,5 +1,3 @@
-// import * as firebase from "firebase";
-// import * as moment from "moment";
 import { functions } from "../main";
 
 export default {
@@ -12,19 +10,19 @@ export default {
     }
   },
   actions: {
-    async syncExchangeOperations({ commit, getters }, payload) {
+    async syncExchangeOperations({ commit }, payload) {
       commit('setCreating', true);
 
       let params = {
-        userId: getters.user.id,
         exchangeId: payload.id
       };
 
       try {
-        let response = await functions.httpsCallable("syncExchangeOperations")(params);
+        let response = await functions.httpsCallable("syncExchangeOperations", { timeout: 480000 })(params);
         if(response.data.error) {
           throw response.data.error;
         }
+
         commit('setSnackbarContent', {type: response.data.type, message: response.data.message});
         commit('setCreating', false);
       } catch (error) {

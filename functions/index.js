@@ -7,21 +7,22 @@ const xmlParser = require('xml-js');
 const axios = require('axios');
 const conf = require('./env');
 const env = conf.sandbox;
+const runtimeOpts = {
+  timeoutSeconds: 480,
+  memory: '512MB'
+};
 // const env = process.env.NODE_ENV == 'production' ? conf.producao : conf.sandbox;
 // const env = process.env.APP_ENV == 'production' ? conf.producao : conf.sandbox;
 
 moment.locale('pt-br');
 admin.initializeApp();
 
-function userAuthenthication(userId, auth) {
+function userAuthenthication(auth) {
   if (!auth) {
-    console.log("User not authenticated")
-    throw "Usuário não autenticado!";
+    throw 'Usuário não autenticado!';
   }
-  if(userId !== auth.uid) {
-    console.log("User not autorized")
-    throw "Usuário não autorizado";
-  }
+
+  return auth.uid;
 }
 
 function getUser(userId) {
@@ -43,31 +44,35 @@ function getUser(userId) {
 
 function createUser(user) {
   return admin
-  .firestore()
-  .collection('users')
+    .firestore()
+    .collection('users')
     .doc(user.id)
     .set(user);
 }
 
 async function createAuthUser(user) {
   try {
-    const authUser = await admin
-      .auth()
-      .createUser({ email: user.email, password: user.password, displayName: user.name });
+    const authUser = await admin.auth().createUser({
+      email: user.email,
+      password: user.password,
+      displayName: user.name
+    });
     return authUser.uid;
-  }
-  catch (error) {
-    if (error.errorInfo && error.errorInfo.code === "auth/email-already-exists") {
-      throw "Email já cadastrado";
-    }
-    else {
+  } catch (error) {
+    if (
+      error.errorInfo &&
+      error.errorInfo.code === 'auth/email-already-exists'
+    ) {
+      throw 'Email já cadastrado';
+    } else {
       throw error;
     }
   }
 }
 
 function checkUserCpfAlreadyUsed(cpf) {
-  return admin.firestore()
+  return admin
+    .firestore()
     .collection('users')
     .where('cpf', '==', cpf)
     .get()
@@ -75,12 +80,12 @@ function checkUserCpfAlreadyUsed(cpf) {
       if (!doc.empty) {
         throw 'CPF já cadastrado';
       }
-    })
+    });
 }
 
 function handleErrors(error) {
   if (typeof error === 'string') {
-    return {error: error};
+    return { error: error };
   }
 
   console.error(error);
@@ -113,7 +118,7 @@ function getUserExchange(userId, exchangeId) {
     .firestore()
     .collection('users')
     .doc(userId)
-    .collection("exchanges")
+    .collection('exchanges')
     .doc(exchangeId)
     .get()
     .then((exchangeDoc) => {
@@ -133,7 +138,7 @@ function getUserLastOperations(userId, exchangeId) {
     .firestore()
     .collection('users')
     .doc(userId)
-    .collection("lastOperations")
+    .collection('lastOperations')
     .doc(exchangeId)
     .get()
     .then((lastOperationsDoc) => {
@@ -211,22 +216,25 @@ function getFreePlan() {
     });
 }
 
-function getUserOperationsByDatetimeRange(userId, startTimestamp, endTimestamp) {
+function getUserOperationsByDatetimeRange(
+  userId,
+  startTimestamp,
+  endTimestamp
+) {
   return admin
-  .firestore()
-  .collection('users/' + userId + '/operations')
-  .where('time', '>=', startTimestamp)
-  .where('time', '<=', endTimestamp)
-  .get()
-  .then(
-    (querySnapshot) => {
-      if(querySnapshot.empty) {
-        throw "Nenhuma operação encontrada para a data selecionada";
+    .firestore()
+    .collection('users/' + userId + '/operations')
+    .where('time', '>=', startTimestamp)
+    .where('time', '<=', endTimestamp)
+    .get()
+    .then((querySnapshot) => {
+      if (querySnapshot.empty) {
+        throw 'Nenhuma operação encontrada para a data selecionada';
       }
       return querySnapshot.docs.map(function(operation) {
         return formatOperation({ ...operation.data(), id: operation.id });
       });
-    })
+    });
 }
 
 function formatOperation(operation) {
@@ -395,12 +403,12 @@ function setUserOperation(userId, operation, batch) {
     .firestore()
     .collection('users')
     .doc(userId)
-    .collection("operations")
+    .collection('operations')
     .doc();
 
-    if(!batch) {
-      return operationDoc.set(operation);
-    }
+  if (!batch) {
+    return operationDoc.set(operation);
+  }
 
   return batch.set(operationDoc, operation);
 }
@@ -408,16 +416,14 @@ function setUserOperation(userId, operation, batch) {
 function setUserLastOperation(userId, exchangeId, operation, batch, merge) {
   let lastOperation = admin
     .firestore()
-    .collection(
-      'users/' + userId + '/lastOperations/'
-    )
+    .collection('users/' + userId + '/lastOperations/')
     .doc(exchangeId);
 
-    if(!batch) {
-      return lastOperation.set(operation, { merge: merge });
-    }
+  if (!batch) {
+    return lastOperation.set(operation, { merge: merge });
+  }
 
-    return batch.set(lastOperation, operation, { merge: merge})
+  return batch.set(lastOperation, operation, { merge: merge });
 }
 
 function updateUserExchange(userId, exchangeId, data) {
@@ -427,7 +433,7 @@ function updateUserExchange(userId, exchangeId, data) {
     .doc(userId)
     .collection('exchanges')
     .doc(exchangeId)
-    .update(data)
+    .update(data);
 }
 
 function setUserPagseguroPlan(batch, userId, plan, preApproval) {
@@ -620,14 +626,13 @@ function pagseguroPaymentTypeBrand(code) {
 function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
   return axios({
     method: 'GET',
-    url: env.providers.preApproval + "/" + preApprovalCode + "/payment-orders",
+    url: env.providers.preApproval + '/' + preApprovalCode + '/payment-orders',
     params: {
       email: env.email,
       token: env.token
     },
     headers: {
-      accept:
-                'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
+      accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
       'content-type': 'application/json'
     }
   }).then(async (response) => {
@@ -651,7 +656,7 @@ function createPagseguroPlan() {
         charge: 'AUTO',
         reference: 'pro-yearly',
         period: 'YEARLY',
-        amountPerPayment: "165.00"
+        amountPerPayment: '165.00'
       }
     }
   };
@@ -664,15 +669,13 @@ function createPagseguroPlan() {
       token: env.token
     },
     headers: {
-      accept:
-        'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
+      accept: 'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
       'Content-Type': 'application/xml;charset=ISO-8859-1'
     },
     data: xmlParser.js2xml(planData, { compact: true })
-  })
-  .then((data) => {
+  }).then((data) => {
     return xmlParser.xml2js(data.data, { compact: true });
-  })
+  });
 }
 
 function getPagseguroPreApprovalNotification(notificationCode) {
@@ -706,28 +709,33 @@ async function preApprovalNotificationHandler(notificationCode) {
     let userId = reference.split('_')[0];
     let planId = reference.split('_')[1];
 
-    if(preApproval.status === "payment_method_change") {
+    if (preApproval.status === 'payment_method_change') {
       await pagseguroSignoutFromPlan(preApproval.code);
       return notification;
     }
 
     const batch = admin.firestore().batch();
 
-    if(["initiated", "pending"].includes(preApproval.status)) {
+    if (['initiated', 'pending'].includes(preApproval.status)) {
       setUserPagseguroPlan(batch, userId, await getPlan(planId), preApproval);
-      setUserPlanAndPreApproval(batch, userId, await getFreePlan(), preApproval);
-    }
-    else if (preApproval.status === "active") {
+      setUserPlanAndPreApproval(
+        batch,
+        userId,
+        await getFreePlan(),
+        preApproval
+      );
+    } else if (preApproval.status === 'active') {
       let plan = await getPlan(planId);
       setUserPagseguroPlan(batch, userId, plan, preApproval);
       setUserPlanAndPreApproval(batch, userId, plan, preApproval);
-    }
-    else if ([
-      'cancelled',
-      'cancelled_by_receiver',
-      'cancelled_by_sender',
-      'expired'
-    ].includes(preApproval.status)) {
+    } else if (
+      [
+        'cancelled',
+        'cancelled_by_receiver',
+        'cancelled_by_sender',
+        'expired'
+      ].includes(preApproval.status)
+    ) {
       let cancelDatetime = moment().format('x');
       setUserPagseguroPlan(batch, userId, await getPlan(planId), {
         ...preApproval,
@@ -737,8 +745,7 @@ async function preApprovalNotificationHandler(notificationCode) {
         ...preApproval,
         cancelDatetime: cancelDatetime
       });
-    }
-    else if (preApproval.status === "suspended") {
+    } else if (preApproval.status === 'suspended') {
       let suspendDatetime = moment().format('x');
       setUserPagseguroPlan(batch, userId, await getPlan(planId), {
         ...preApproval,
@@ -788,8 +795,10 @@ async function transactionNotificationHandler(notificationCode) {
 
     let transaction = {
       code: transactionCode,
-      date: moment(notification.transaction.date._text).format("x"),
-      lastEventDate: moment(notification.transaction.lastEventDate._text).format("x"),
+      date: moment(notification.transaction.date._text).format('x'),
+      lastEventDate: moment(
+        notification.transaction.lastEventDate._text
+      ).format('x'),
       status: status.transactionStatus,
       cancelationSource: notification.transaction.cancelationSource
         ? notification.transaction.cancelationSource._text
@@ -818,7 +827,7 @@ async function transactionNotificationHandler(notificationCode) {
       },
       netAmount: Number(notification.transaction.netAmount._text),
       escrowEndDate: notification.transaction.escrowEndDate
-        ? moment(notification.transaction.escrowEndDate._text).format("x")
+        ? moment(notification.transaction.escrowEndDate._text).format('x')
         : '',
       sender: {
         name: notification.transaction.sender.name._text,
@@ -856,7 +865,13 @@ async function transactionNotificationHandler(notificationCode) {
   }
 }
 
-async function syncBinanceTrades(client, lastOperations, userId, systemExchange, batch) {
+async function syncBinanceTrades(
+  client,
+  lastOperations,
+  userId,
+  systemExchange,
+  batch
+) {
   const timeoutPromises = [];
 
   let exchangeInfo = await client.exchangeInfo({ useServerTime: true });
@@ -870,7 +885,7 @@ async function syncBinanceTrades(client, lastOperations, userId, systemExchange,
 
         let tradeParams = {
           symbol: symbol,
-          useServerTime: true,
+          useServerTime: true
           // recvWindow: 10000000
         };
         let lastOperation = lastOperations
@@ -879,34 +894,46 @@ async function syncBinanceTrades(client, lastOperations, userId, systemExchange,
 
         if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
 
-        client.myTrades(tradeParams)
-        .then(trades => {
-          let lastTradeId = '';
-          trades.forEach((trade) => {
-            lastTradeId = trade.id;
-            if (trade.time >= 1561950000000) {
-              setUserOperation(userId, {
-                ...trade,
-                baseAsset: baseAsset,
-                quoteAsset: quoteAsset,
-                exchangeName: systemExchange.name,
-                exchangeUrl: systemExchange.url,
-                exchangeCountryCode: systemExchange.countryCode,
-                type: 'trade'
-              }, batch)
+        client.myTrades(tradeParams).then(
+          (trades) => {
+            let lastTradeId = '';
+            trades.forEach((trade) => {
+              lastTradeId = trade.id;
+              if (trade.time >= 1561950000000) {
+                setUserOperation(
+                  userId,
+                  {
+                    ...trade,
+                    baseAsset: baseAsset,
+                    quoteAsset: quoteAsset,
+                    exchangeName: systemExchange.name,
+                    exchangeUrl: systemExchange.url,
+                    exchangeCountryCode: systemExchange.countryCode,
+                    type: 'trade'
+                  },
+                  batch
+                );
+              }
+            });
+
+            if (trades.length > 0) {
+              let symbolObj = {};
+              symbolObj[symbol] = { trade: lastTradeId };
+              setUserLastOperation(
+                userId,
+                systemExchange.id,
+                symbolObj,
+                batch,
+                true
+              );
             }
-          });
 
-          if (trades.length > 0) {
-            let symbolObj = {};
-            symbolObj[symbol] = { trade: lastTradeId };
-            setUserLastOperation(userId, systemExchange.id, symbolObj, batch, true)
+            resolve();
+          },
+          function(error) {
+            reject('Binance trades: ' + error);
           }
-
-          resolve();
-        }, function(error) {
-            reject("Binance trades: " + error);
-          });
+        );
       }, 500 * index)
     );
     timeoutPromises.push(timeoutPromise);
@@ -915,22 +942,26 @@ async function syncBinanceTrades(client, lastOperations, userId, systemExchange,
   return Promise.all(timeoutPromises);
 }
 
-async function syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch) {
+async function syncBinanceDeposits(
+  client,
+  lastOperations,
+  userId,
+  systemExchange,
+  batch
+) {
   let depositParams = {
     startTime: 1561950000000,
-    useServerTime: true,
+    useServerTime: true
     // recvWindow: 10000000
   };
-  let lastDeposit = lastOperations
-    ? lastOperations.deposit || false
-    : false;
+  let lastDeposit = lastOperations ? lastOperations.deposit || false : false;
 
   if (lastDeposit) depositParams.startTime = lastDeposit + 1;
 
   let response = await client.depositHistory(depositParams);
 
-  if(!response.success) {
-    throw new Error("Binance deposits: " + response.msg);
+  if (!response.success) {
+    throw new Error('Binance deposits: ' + response.msg);
   }
 
   let lastDepositTimestamp = '';
@@ -942,43 +973,57 @@ async function syncBinanceDeposits(client, lastOperations, userId, systemExchang
     delete deposit.asset;
     delete deposit.insertTime;
     delete deposit.amount;
-    setUserOperation(userId, {
-      ...deposit,
-      symbol: symbol,
-      time: time,
-      qty: qty,
-      exchangeName: systemExchange.name,
-      exchangeUrl: systemExchange.url,
-      exchangeCountryCode: systemExchange.countryCode,
-      type: 'deposit'
-    }, batch);
+    setUserOperation(
+      userId,
+      {
+        ...deposit,
+        symbol: symbol,
+        time: time,
+        qty: qty,
+        exchangeName: systemExchange.name,
+        exchangeUrl: systemExchange.url,
+        exchangeCountryCode: systemExchange.countryCode,
+        type: 'deposit'
+      },
+      batch
+    );
   });
 
   if (response.depositList.length > 0) {
-    setUserLastOperation(userId, systemExchange.id, {
-      deposit: lastDepositTimestamp
-    }, batch, true);
+    setUserLastOperation(
+      userId,
+      systemExchange.id,
+      {
+        deposit: lastDepositTimestamp
+      },
+      batch,
+      true
+    );
   }
 
   return response.depositList;
 }
 
-async function syncBinanceWhitdraws(client, lastOperations, userId, systemExchange, batch) {
+async function syncBinanceWhitdraws(
+  client,
+  lastOperations,
+  userId,
+  systemExchange,
+  batch
+) {
   let whitdrawParams = {
     startTime: 1561950000000,
-    useServerTime: true,
+    useServerTime: true
     // recvWindow: 10000000
   };
-  let lastWhitdraw = lastOperations
-    ? lastOperations.whitdraw || false
-    : false;
+  let lastWhitdraw = lastOperations ? lastOperations.whitdraw || false : false;
 
   if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
 
   let response = await client.withdrawHistory(whitdrawParams);
 
-  if(!response.success) {
-    throw new Error("Binance whitdraws: " + response.msg);
+  if (!response.success) {
+    throw new Error('Binance whitdraws: ' + response.msg);
   }
 
   let lastWhitdrawTimestamp = '';
@@ -990,28 +1035,43 @@ async function syncBinanceWhitdraws(client, lastOperations, userId, systemExchan
     delete whitdraw.asset;
     delete whitdraw.applyTime;
     delete whitdraw.amount;
-    setUserOperation(userId, {
-      ...whitdraw,
-      symbol: symbol,
-      time: time,
-      qty: qty,
-      exchangeName: systemExchange.name,
-      exchangeUrl: systemExchange.url,
-      exchangeCountryCode: systemExchange.countryCode,
-      type: 'whitdraw'
-    }, batch);
+    setUserOperation(
+      userId,
+      {
+        ...whitdraw,
+        symbol: symbol,
+        time: time,
+        qty: qty,
+        exchangeName: systemExchange.name,
+        exchangeUrl: systemExchange.url,
+        exchangeCountryCode: systemExchange.countryCode,
+        type: 'whitdraw'
+      },
+      batch
+    );
   });
 
   if (response.withdrawList.length > 0) {
-    setUserLastOperation(userId, systemExchange.id, {
-      whitdraw: lastWhitdrawTimestamp
-    }, batch, true);
+    setUserLastOperation(
+      userId,
+      systemExchange.id,
+      {
+        whitdraw: lastWhitdrawTimestamp
+      },
+      batch,
+      true
+    );
   }
 
   return response.withdrawList;
 }
 
-async function syncBinanceOperations(userId, userExchange, userExchangeLastOperations, systemExchange) {
+async function syncBinanceOperations(
+  userId,
+  userExchange,
+  userExchangeLastOperations,
+  systemExchange
+) {
   try {
     const client = Binance({
       apiKey: userExchange.apiKey,
@@ -1020,71 +1080,102 @@ async function syncBinanceOperations(userId, userExchange, userExchangeLastOpera
 
     const batch = admin.firestore().batch();
     const lastOperations = userExchangeLastOperations
-    ? userExchangeLastOperations
-    : false;
-
-    await syncBinanceTrades(client, lastOperations, userId, systemExchange, batch);
+      ? userExchangeLastOperations
+      : false;
 
     const promises = [];
 
-    promises.push(syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch));
-    promises.push(syncBinanceWhitdraws(client, lastOperations, userId, systemExchange, batch));
-    promises.push(updateUserExchange(userId, userExchange.id, {
-      lastSync: moment().format('x')
-    }));
+    promises.push(
+      syncBinanceTrades(client, lastOperations, userId, systemExchange, batch)
+    );
+    promises.push(
+      syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch)
+    );
+    promises.push(
+      syncBinanceWhitdraws(
+        client,
+        lastOperations,
+        userId,
+        systemExchange,
+        batch
+      )
+    );
+    promises.push(
+      updateUserExchange(userId, userExchange.id, {
+        lastSync: moment().format('x')
+      })
+    );
 
     await Promise.all(promises);
-
-    return batch.commit();
-  } catch(error) {
+    await batch.commit();
+    return { type: "success", message: "Operações sincronizadas com sucesso" }
+  } catch (error) {
     return handleErrors(error);
   }
 }
 
-exports.syncExchangeOperations = functions.https.onCall(async (data, context) => {
-  try {
-    userAuthenthication(data.userId, context.auth);
-    let user = await getUser(data.userId);
-    if (!user.plan.benefits.syncExchanges) {
-      throw 'Operação não autorizada para o plano contratado';
+exports.syncExchangeOperations = functions
+  .runWith(runtimeOpts)
+  .https.onCall(async (data, context) => {
+    try {
+      let userId = userAuthenthication(context.auth);
+      let user = await getUser(userId);
+
+      if (!user.plan.benefits.syncExchanges) {
+        throw 'Operação não autorizada para o plano contratado';
+      }
+
+      let userExchange = await getUserExchange(userId, data.exchangeId);
+
+      let response = await Promise.all([
+        getUserLastOperations(userId, userExchange.exchangeId),
+        getSystemExchange(userExchange.exchangeId)
+      ]);
+
+      let userExchangeLastOperations = response[0];
+      let systemExchange = response[1];
+
+      switch (systemExchange.id) {
+        case 'binance':
+          return syncBinanceOperations(
+            user.id,
+            userExchange,
+            userExchangeLastOperations,
+            systemExchange
+          );
+      }
+    } catch (error) {
+      return handleErrors(error);
     }
+  });
 
-    let userExchange = await getUserExchange(data.userId, data.exchangeId);
+exports.generateOperationsTextFile = functions.https.onCall(
+  async (data, context) => {
+    try {
+      userAuthenthication(data.userId, context.auth);
+      let startTimestamp = Number(moment(data.date, 'YYYY-MM').format('x'));
+      let endTimestamp = Number(
+        moment(data.date, 'YYYY-MM')
+          .endOf('month')
+          .format('x')
+      );
 
-    let response = await Promise.all([getUserLastOperations(data.userId, userExchange.exchangeId), getSystemExchange(userExchange.exchangeId)]);
+      let operations = await getUserOperationsByDatetimeRange(
+        data.userId,
+        startTimestamp,
+        endTimestamp
+      );
 
-    let userExchangeLastOperations = response[0];
-    let systemExchange = response[1];
-    switch (systemExchange.id) {
-      case "binance":
-        return syncBinanceOperations(user.id, userExchange, userExchangeLastOperations, systemExchange);
+      return {
+        type: 'success',
+        message: 'Arquivo gerado com sucesso!',
+        content: operations
+      };
+    } catch (error) {
+      return handleErrors(error);
     }
-  } catch (error) {
-    return handleErrors(error);
   }
-});
-
-exports.generateOperationsTextFile = functions.https.onCall(async (data, context) => {
-  try {
-    userAuthenthication(data.userId, context.auth);
-    let startTimestamp = Number(moment(data.date, 'YYYY-MM').format('x'));
-    let endTimestamp = Number(
-      moment(data.date, 'YYYY-MM')
-        .endOf('month')
-        .format('x')
-    );
-
-    let operations = await getUserOperationsByDatetimeRange(data.userId, startTimestamp, endTimestamp);
-
-    return {
-      type: 'success',
-      message: 'Arquivo gerado com sucesso!',
-      content: operations
-    };
-  } catch(error) {
-    return handleErrors(error);
-  }
-});
+);
 
 exports.signUserToPlan = functions.https.onCall((data, context) => {
   try {
@@ -1099,7 +1190,7 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
         let plan = response[0];
         let user = response[1];
 
-        if (user.plan.type === "paid") {
+        if (user.plan.type === 'paid') {
           throw 'Já existe uma adesão ativa';
         }
 
@@ -1243,18 +1334,21 @@ exports.pagseguroNotificationHandler = functions.https.onRequest((req, res) => {
 
 exports.signUserUp = functions.https.onCall(async (data) => {
   try {
-    // checkUserEmailAlreadyUsed(data.email);
-    await checkUserCpfAlreadyUsed(data.cpf.replace(/\D/g,''));
-    let uid = await createAuthUser({email: data.email, name: data.name, password: data.password});
+    await checkUserCpfAlreadyUsed(data.cpf.replace(/\D/g, ''));
+    let uid = await createAuthUser({
+      email: data.email,
+      name: data.name,
+      password: data.password
+    });
     let freePlan = await getFreePlan();
 
     const newUser = {
       id: uid,
       name: data.name,
       email: data.email,
-      cpf: data.cpf.replace(/\D/g,''),
+      cpf: data.cpf.replace(/\D/g, ''),
       birthday: data.birthday,
-      dateCreated: moment().format("x"),
+      dateCreated: moment().format('x'),
       plan: freePlan,
       exchanges: [],
       operations: [],
@@ -1270,4 +1364,4 @@ exports.signUserUp = functions.https.onCall(async (data) => {
   } catch (error) {
     return handleErrors(error);
   }
-})
+});
