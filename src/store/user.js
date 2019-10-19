@@ -74,7 +74,7 @@ export default {
       firebase.auth().signOut();
       commit('setUser', null);
     },
-    fetchUserData({ commit, dispatch, getters }, payload) {
+    fetchUserData({ commit, getters }, payload) {
       commit('setLoading', true);
       let promises = [];
       this.unsubscribeUserListener = db
@@ -95,8 +95,6 @@ export default {
           commit('setUser', updatedUser);
         });
       promises.push(this.unsubscribeUserListener);
-
-      dispatch('loadSystemExchanges');
 
       this.unsubscribeExchangesListener = db
         .collection('users')

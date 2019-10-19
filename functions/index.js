@@ -116,39 +116,6 @@ function errorHandler(error) {
   throw new functions.https.HttpsError("internal", message);
 }
 
-function handleErrors(error) {
-  console.error(error);
-  if (typeof error === 'string') {
-    return { error: error };
-  }
-  else if(error instanceof functions.https.HttpsError) {
-    return error;
-  }
-
-  let message = 'Algum erro ocorreu. Contate o suporte.';
-
-  // console.log("Type", typeof(error));
-  // console.log("error message", error.message);
-  // console.log("error response",error.response);
-  // console.log("error response statusText", error.response.statusText);
-  // console.log("error.response.data", error.response.data);
-  // console.log("error.response.data.errors", error.response.data.errors);
-
-  if (error instanceof Error) {
-    if (error.response && error.response.data && error.response.data.errors) {
-      console.error(error.response.data.errors);
-    }
-    if (error.response && error.response.statusText) {
-      console.error(error.response.statusText);
-    }
-  } else {
-    const json = xmlParser.xml2js(error.response.data, { compact: true });
-    console.error(json.errors.error.message._text);
-  }
-
-  return { error: message };
-}
-
 function getUserExchange(userId, exchangeId) {
   return admin
     .firestore()

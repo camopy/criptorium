@@ -45,6 +45,7 @@
                   name="exchange"
                   label="Exchange"
                   :items="exchangeList"
+                  :loading="systemExchanges.length === 0"
                   prepend-icon="fas fa-university"
                   v-model="exchange"
                   required

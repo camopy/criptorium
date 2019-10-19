@@ -9,7 +9,7 @@
         fixed
         dark
         color="primary"
-        @click="operationDialog = !operationDialog"
+        @click="onAddOperations"
       >
         <v-icon>fas fa-plus</v-icon>
       </v-btn>
@@ -34,6 +34,17 @@ export default {
   computed: {
     user() {
       return this.$store.getters.user;
+    },
+    systemExchanges() {
+      return this.$store.getters.systemExchanges;
+    }
+  },
+  methods: {
+    onAddOperations() {
+      if(this.systemExchanges.length === 0) {
+        this.$store.dispatch('loadSystemExchanges');
+      }
+      this.operationDialog = !this.operationDialog
     }
   }
 };

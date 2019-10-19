@@ -22,7 +22,6 @@ export default {
         },
         function(error) {
           console.log("Error getting system exchanges:", error);
-          commit("setLoading", false);
           return Promise.reject(error);
         });
     }
