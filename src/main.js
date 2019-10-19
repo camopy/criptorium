@@ -7,9 +7,18 @@ import moment from "moment";
 import firebase from "firebase/app";
 import "firebase/firestore";
 import "firebase/functions";
+import * as Sentry from '@sentry/browser';
+import * as Integrations from '@sentry/integrations';
 
 moment.locale("pt-br");
 Vue.prototype.$moment = moment;
+
+if(process.env.NODE_ENV === 'production') {
+  Sentry.init({
+    dsn: 'https://9b0ae9d17fc74821acb9bb1cec6b5949@sentry.io/1784831',
+    integrations: [new Integrations.Vue({Vue, attachProps: true})],
+  });
+}
 
 Vue.config.productionTip = false
 
