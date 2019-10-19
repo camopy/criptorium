@@ -6,13 +6,12 @@ const moment = require('moment');
 const xmlParser = require('xml-js');
 const axios = require('axios');
 const conf = require('./env');
-const env = conf.sandbox;
+const env = functions.config().env.id == 'prod' ? conf.producao : conf.sandbox;
+const pagseguroAuth = functions.config().pagseguro.auth;
 const runtimeOpts = {
   timeoutSeconds: 480,
   memory: '512MB'
 };
-// const env = process.env.NODE_ENV == 'production' ? conf.producao : conf.sandbox;
-// const env = process.env.APP_ENV == 'production' ? conf.producao : conf.sandbox;
 
 moment.locale('pt-br');
 admin.initializeApp();
@@ -348,8 +347,8 @@ function setPagseguroSession() {
     method: 'POST',
     url: env.providers.session,
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     }
   }).then((response) => {
     return xmlParser.xml2js(response.data, { compact: true }).session.id._text;
@@ -496,8 +495,8 @@ function pagseguroSignoutFromPlan(preApprovalCode) {
     method: 'PUT',
     url: env.providers.preApproval + '/' + preApprovalCode + '/cancel',
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
@@ -651,8 +650,8 @@ function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
     method: 'GET',
     url: env.providers.preApproval + '/' + preApprovalCode + '/payment-orders',
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
@@ -688,8 +687,8 @@ function createPagseguroPlan() {
     method: 'POST',
     url: env.providers.preApproval + '/request/',
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
@@ -706,8 +705,8 @@ function getPagseguroPreApprovalNotification(notificationCode) {
     method: 'GET',
     url: env.preApprovalsNotificationURL + notificationCode,
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     },
     headers: {
       'content-type': 'application/json'
@@ -793,8 +792,8 @@ function getPagseguroTransactionNotification(notificationCode) {
     method: 'GET',
     url: env.transactionsNotificationURL + notificationCode,
     params: {
-      email: env.email,
-      token: env.token
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
     },
     headers: {
       'content-type': 'application/json'
@@ -1310,8 +1309,8 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
           method: 'POST',
           url: env.providers.preApproval,
           params: {
-            email: env.email,
-            token: env.token
+            email: pagseguroAuth.email,
+            token: pagseguroAuth.token
           },
           headers: {
             accept:

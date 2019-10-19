@@ -1,7 +1,5 @@
 const envs = {
   producao: {
-    email: '',
-    token: '',
     transactionsNotificationURL: 'https://ws.pagseguro.uol.com.br/v3/transactions/notifications/',
     preApprovalsNotificationURL: 'https://ws.pagseguro.uol.com.br/v2/pre-approvals/notifications/',
     providers: {
@@ -18,8 +16,6 @@ const envs = {
     }
   },
   sandbox: {
-    email: 'paulorenato.cpb@gmail.com',
-    token: '3D19535BD4EF4FFCB5533DF1F7E64D6B',
     transactionsNotificationURL: 'https://ws.sandbox.pagseguro.uol.com.br/v3/transactions/notifications/',
     preApprovalsNotificationURL: 'https://ws.sandbox.pagseguro.uol.com.br/v2/pre-approvals/notifications/',
     providers: {
