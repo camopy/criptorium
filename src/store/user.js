@@ -33,14 +33,12 @@ export default {
 
       try {
         let response = await functions.httpsCallable("signUserUp")(payload);
-        if(response.data.type === "error") {
-          throw response.data.message;
-        }
+
         commit('setSnackbarContent', {
-          type: response.data.type,
-          message: response.data.message
+          type: "success",
+          message: "Usuário criado com sucesso"
         });
-        commit('setUser', response.data.content);
+        commit('setUser', response.data);
         commit('setCreating', false);
       }
       catch (error) {
@@ -48,7 +46,7 @@ export default {
         commit('setCreating', false);
         commit('setSnackbarContent', {
           type: 'error',
-          message: error
+          message: error.message
         });
       }
     },

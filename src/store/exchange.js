@@ -18,16 +18,13 @@ export default {
       };
 
       try {
-        let response = await functions.httpsCallable("syncExchangeOperations", { timeout: 480000 })(params);
-        if(response.data.error) {
-          throw response.data.error;
-        }
+        await functions.httpsCallable("syncExchangeOperations", { timeout: 480000 })(params);
 
-        commit('setSnackbarContent', {type: response.data.type, message: response.data.message});
+        commit('setSnackbarContent', {type: "success", message: "Operações sincronizadas"});
         commit('setCreating', false);
       } catch (error) {
-        console.log(error);
-          commit('setSnackbarContent', {type: "error", message: error});
+          console.error(error);
+          commit('setSnackbarContent', {type: "error", message: error.message});
           commit('setCreating', false);
       }
     }

@@ -26,23 +26,21 @@ export default {
 
       try {
         let response = await functions.httpsCallable("generateOperationsTextFile")(params);
-        if(response.data.error) {
-          throw response.data.error;
-        }
+
         let blob = new Blob([
-          JSON.stringify(response.data.content)
+          JSON.stringify(response.data)
             .replace(/[[\]"]+/g, '')
             .replace(/,/g, '\n')
         ], {
           type: 'text/plain;charset=utf-8'
         });
         saveAs(blob, 'Operacoes ' + payload.date + '.txt');
-        commit('setSnackbarContent', { type: response.data.type, message: response.data.message });
+        commit('setSnackbarContent', { type: "success", message: "Arquivo gerado com sucesso" });
         commit('setCreating', false);
       }
       catch (error) {
         console.error(error);
-        commit('setSnackbarContent', { type: "error", message: error });
+        commit('setSnackbarContent', { type: "error", message: error.message });
         commit('setCreating', false);
       }
     },

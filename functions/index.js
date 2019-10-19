@@ -19,9 +19,8 @@ admin.initializeApp();
 
 function userAuthenthication(auth) {
   if (!auth) {
-    throw 'Usuário não autenticado!';
+    throw new functions.https.HttpsError("unauthenticated", "Usuário não autenticado");
   }
-
   return auth.uid;
 }
 
@@ -33,7 +32,7 @@ function getUser(userId) {
     .get()
     .then((userDoc) => {
       if (!userDoc.data()) {
-        throw new Error('Usuário não encontrado');
+        throw new new functions.https.HttpsError("not-found", "Usuário não encontrado");
       }
       return {
         id: userDoc.id,
@@ -63,7 +62,7 @@ async function createAuthUser(user) {
       error.errorInfo &&
       error.errorInfo.code === 'auth/email-already-exists'
     ) {
-      throw 'Email já cadastrado';
+      throw new functions.https.handleErrors("already-exists", 'Email já cadastrado');
     } else {
       throw error;
     }
@@ -78,18 +77,55 @@ function checkUserCpfAlreadyUsed(cpf) {
     .get()
     .then(function(doc) {
       if (!doc.empty) {
-        throw 'CPF já cadastrado';
+        throw new functions.https.HttpsError("already-exists", 'CPF já cadastrado');
       }
     });
 }
 
+function errorHandler(error) {
+  console.error(error);
+
+  if(typeof(error) === "string") {
+    throw new functions.https.HttpsError("internal", error);
+  }
+  else if (error instanceof functions.https.HttpsError) {
+    throw error;
+  }
+
+  let message = 'Algum erro ocorreu. Contate o suporte.';
+
+  // console.log("Type", typeof(error));
+  // console.log("error message", error.message);
+  // console.log("error response",error.response);
+  // console.log("error response statusText", error.response.statusText);
+  // console.log("error.response.data", error.response.data);
+  // console.log("error.response.data.errors", error.response.data.errors);
+
+  if (error instanceof Error) {
+    if (error.response && error.response.data && error.response.data.errors) {
+      console.error(error.response.data.errors);
+    }
+    if (error.response && error.response.statusText) {
+      console.error(error.response.statusText);
+    }
+  } else {
+    const json = xmlParser.xml2js(error.response.data, { compact: true });
+    console.error(json.errors.error.message._text);
+  }
+
+  throw new functions.https.HttpsError("internal", message);
+}
+
 function handleErrors(error) {
+  console.error(error);
   if (typeof error === 'string') {
     return { error: error };
   }
+  else if(error instanceof functions.https.HttpsError) {
+    return error;
+  }
 
-  console.error(error);
-  let message = 'Algum error ocorreu. Contate o suporte.';
+  let message = 'Algum erro ocorreu. Contate o suporte.';
 
   // console.log("Type", typeof(error));
   // console.log("error message", error.message);
@@ -172,7 +208,7 @@ function getUserPagseguroPlan(reference) {
     .get()
     .then((planDoc) => {
       if (!planDoc.data()) {
-        throw new Error('Plano pagseguro reference não encontrado');
+        throw new Error('user_pagseguro_plan not found');
       }
 
       return {
@@ -229,7 +265,7 @@ function getUserOperationsByDatetimeRange(
     .get()
     .then((querySnapshot) => {
       if (querySnapshot.empty) {
-        throw 'Nenhuma operação encontrada para a data selecionada';
+        throw new functions.https.HttpsError("not-found", 'Nenhuma operação encontrada para a data selecionada');
       }
       return querySnapshot.docs.map(function(operation) {
         return formatOperation({ ...operation.data(), id: operation.id });
@@ -349,7 +385,7 @@ function getPagseguroCardBrand(sessionId, cardBin) {
     }
   }).then((response) => {
     if (!response.data.bin.brand) {
-      throw 'Cartão inválido';
+      throw new functions.https.HttpsError("invalid-argument", 'Cartão inválido');
     }
     return response.data.bin.brand.name;
   });
@@ -366,7 +402,7 @@ function getPagseguroCardToken(sessionId, card, value) {
     }
   }).then((response) => {
     if (!response.data) {
-      throw 'Cartão inválido';
+      throw new functions.https.HttpsError("invalid-argument", 'Cartão inválido');
     }
     return response.data.token;
   });
@@ -761,7 +797,7 @@ async function preApprovalNotificationHandler(notificationCode) {
       return notification;
     });
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 }
 
@@ -861,7 +897,7 @@ async function transactionNotificationHandler(notificationCode) {
       return notification;
     });
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 }
 
@@ -885,7 +921,7 @@ async function syncBinanceTrades(
 
         let tradeParams = {
           symbol: symbol,
-          useServerTime: true
+          useServerTime: true,
           // recvWindow: 10000000
         };
         let lastOperation = lastOperations
@@ -931,7 +967,7 @@ async function syncBinanceTrades(
             resolve();
           },
           function(error) {
-            reject('Binance trades: ' + error);
+            reject(new functions.https.HttpsError("unavailable", "Falha ao comunicar com a exchange", 'Binance trades: ' + error));
           }
         );
       }, 500 * index)
@@ -961,7 +997,7 @@ async function syncBinanceDeposits(
   let response = await client.depositHistory(depositParams);
 
   if (!response.success) {
-    throw new Error('Binance deposits: ' + response.msg);
+    throw new functions.https.HttpsError("unavailable", "Falha ao comunicar com a exchange", 'Binance deposits: ' + response.msg);
   }
 
   let lastDepositTimestamp = '';
@@ -1023,7 +1059,7 @@ async function syncBinanceWhitdraws(
   let response = await client.withdrawHistory(whitdrawParams);
 
   if (!response.success) {
-    throw new Error('Binance whitdraws: ' + response.msg);
+    throw new functions.https.HttpsError("unavailable", "Falha ao comunicar com a exchange", 'Binance whitdraws: ' + response.msg);
   }
 
   let lastWhitdrawTimestamp = '';
@@ -1108,9 +1144,9 @@ async function syncBinanceOperations(
 
     await Promise.all(promises);
     await batch.commit();
-    return { type: "success", message: "Operações sincronizadas com sucesso" }
+    return true;
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 }
 
@@ -1122,7 +1158,7 @@ exports.syncExchangeOperations = functions
       let user = await getUser(userId);
 
       if (!user.plan.benefits.syncExchanges) {
-        throw 'Operação não autorizada para o plano contratado';
+        throw new functions.https.HttpsError("permission-denied", 'Operação não autorizada para o plano contratado');
       }
 
       let userExchange = await getUserExchange(userId, data.exchangeId);
@@ -1145,14 +1181,14 @@ exports.syncExchangeOperations = functions
           );
       }
     } catch (error) {
-      return handleErrors(error);
+      return errorHandler(error);
     }
   });
 
 exports.generateOperationsTextFile = functions.https.onCall(
   async (data, context) => {
     try {
-      userAuthenthication(data.userId, context.auth);
+      let userId = userAuthenthication(context.auth);
       let startTimestamp = Number(moment(data.date, 'YYYY-MM').format('x'));
       let endTimestamp = Number(
         moment(data.date, 'YYYY-MM')
@@ -1161,29 +1197,25 @@ exports.generateOperationsTextFile = functions.https.onCall(
       );
 
       let operations = await getUserOperationsByDatetimeRange(
-        data.userId,
+        userId,
         startTimestamp,
         endTimestamp
       );
 
-      return {
-        type: 'success',
-        message: 'Arquivo gerado com sucesso!',
-        content: operations
-      };
+      return operations;
     } catch (error) {
-      return handleErrors(error);
+      return errorHandler(error);
     }
   }
 );
 
 exports.signUserToPlan = functions.https.onCall((data, context) => {
   try {
-    userAuthenthication(data.userId, context.auth);
+    let userId = userAuthenthication(context.auth);
 
     let promises = [];
     promises.push(getPlan(data.plan.id));
-    promises.push(getUser(data.userId));
+    promises.push(getUser(userId));
 
     return Promise.all(promises)
       .then(async (response) => {
@@ -1191,7 +1223,7 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
         let user = response[1];
 
         if (user.plan.type === 'paid') {
-          throw 'Já existe uma adesão ativa';
+          throw new functions.https.HttpsError("already-exists", 'Já existe uma adesão ativa');
         }
 
         if (!user.address || !user.phone) {
@@ -1282,39 +1314,31 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
           data: sign
         });
 
-        return {
-          type: 'success',
-          message:
-            'Assinatura enviada para análise de pagamento junto ao PagSeguro',
-          content: preApproval.data.code
-        };
+        return preApproval.data.code;
       })
       .catch((error) => {
-        return handleErrors(error);
+        return errorHandler(error);
       });
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 });
 
 exports.signoutUserFromPlan = functions.https.onCall(async (data, context) => {
   try {
-    userAuthenthication(data.userId, context.auth);
+    let userId = userAuthenthication(context.auth);
 
-    let user = await getUser(data.userId);
+    let user = await getUser(userId);
 
     if (user.plan.type === 'free') {
-      throw 'Não há nenhuma assinatura ativa';
+      throw new functions.https.HttpsError("not-found", 'Não há nenhuma assinatura ativa');
     }
 
     await pagseguroSignoutFromPlan(user.preApproval.code);
 
-    return {
-      type: 'success',
-      message: 'Assinatura cancelada com sucesso!'
-    };
+    return true;
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 });
 
@@ -1349,19 +1373,12 @@ exports.signUserUp = functions.https.onCall(async (data) => {
       cpf: data.cpf.replace(/\D/g, ''),
       birthday: data.birthday,
       dateCreated: moment().format('x'),
-      plan: freePlan,
-      exchanges: [],
-      operations: [],
-      lastOperations: []
+      plan: freePlan
     };
     await createUser(newUser);
 
-    return {
-      type: 'success',
-      message: 'Cadastro realizado com sucesso!',
-      content: newUser
-    };
+    return newUser;
   } catch (error) {
-    return handleErrors(error);
+    return errorHandler(error);
   }
 });
