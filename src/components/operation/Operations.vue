@@ -10,9 +10,7 @@
                 small
                 color="green"
                 @click="generateOperationsTextFileDialog = !generateOperationsTextFileDialog"
-              >
-              Gerar TXT
-                </v-btn>
+              >Gerar TXT</v-btn>
               <v-spacer></v-spacer>
               <v-flex xs12 sm5 md5>
                 <v-menu
@@ -89,6 +87,10 @@
                     v-if="operation.type==='whitdraw'"
                   >Taxa da transação: {{Number(operation.transactionFee).toFixed(8)}}</v-flex>
                 </v-layout>
+                <v-layout row>
+                  <v-spacer />
+                  <v-btn v-if="operation.addedByUser" text icon small @click="onDeleteOperation(operation)"><v-icon>fas fa-trash</v-icon></v-btn>
+                </v-layout>
               </v-expansion-panel-content>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -102,7 +104,10 @@
         </v-container>
       </v-flex>
     </v-layout>
-    <GenerateOperationsTextFileDialog :visible="generateOperationsTextFileDialog" @close="generateOperationsTextFileDialog = false"></GenerateOperationsTextFileDialog>
+    <GenerateOperationsTextFileDialog
+      :visible="generateOperationsTextFileDialog"
+      @close="generateOperationsTextFileDialog = false"
+    ></GenerateOperationsTextFileDialog>
   </v-container>
 </template>
 
@@ -185,6 +190,9 @@ export default {
     },
     save(date) {
       this.$refs.dateMenu.save(date);
+    },
+    onDeleteOperation(operation) {
+      this.$store.dispatch("deleteOperation", operation);
     }
   }
 };

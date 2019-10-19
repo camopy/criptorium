@@ -218,18 +218,25 @@ export default {
     visible: Boolean
   },
   mixins: [Date, validationMixin],
-  validations: {
-    date: { required },
-    exchange: { required },
-    exchangeName: { required },
-    exchangeUrl: { required },
-    exchangeCountryCode: { required },
-    operation: { required },
-    operationType: { required },
-    baseAsset: { required },
-    quoteAsset: { required },
-    baseAssetQty: { required },
-    quoteAssetQty: { required }
+  validations() {
+    let validationFields = {
+      date: { required },
+      exchange: { required },
+      exchangeName: { required },
+      exchangeUrl: { required },
+      exchangeCountryCode: { required },
+      operation: { required },
+      baseAsset: { required },
+      baseAssetQty: { required },
+    };
+
+    if(this.operation === "Troca") {
+      validationFields.operationType = { required };
+      validationFields.quoteAsset = { required };
+      validationFields.quoteAssetQty = { required };
+    }
+
+    return validationFields;
   },
   watch: {
     exchange(value) {

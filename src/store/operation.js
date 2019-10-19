@@ -53,7 +53,8 @@ export default {
         qty: payload.baseAssetQty,
         exchangeCountryCode: payload.exchangeCountryCode,
         exchangeName: payload.exchangeName,
-        exchangeUrl: payload.exchangeUrl
+        exchangeUrl: payload.exchangeUrl,
+        addedByUser: true
       };
 
       if (payload.operation === 'Troca') {
@@ -88,6 +89,26 @@ export default {
         .catch(function(error) {
           commit('setCreating', false);
           console.error('Error adding operation: ', error);
+        });
+    },
+    deleteOperation({ commit, getters }, payload) {
+      commit("setDeleting");
+      let user = getters.user;
+      return db
+        .collection('users')
+        .doc(user.id)
+        .collection('operations')
+        .doc(payload.id)
+        .delete()
+        .then(function() {
+          commit('setDeleting', false);
+          commit('setSnackbarContent', {type: "success", message: "Operação deletada com sucesso!"});
+          console.log('Operation deleted');
+        })
+        .catch(function(error) {
+          commit('setDeleting', false);
+          commit('setSnackbarContent', {type: "error", message: "Erro ao tentar deletar operação"});
+          console.error('Error deleting operation: ', error);
         });
     },
     fetchOperations({ commit, getters }) {
