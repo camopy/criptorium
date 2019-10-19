@@ -20,8 +20,7 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
-                  <!-- <v-btn v-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn> -->
+                  <v-btn v-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
                   <div
