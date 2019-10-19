@@ -4,7 +4,7 @@
       <v-card-title class="grey lighten-4 py-4 title">Cadastrar operação</v-card-title>
       <v-flex xs12>
         <v-container grid-list-sm class="pa-4">
-          <v-form ref="form" v-model="valid" lazy-validation class="ma-2">
+          <v-form v-model="valid" lazy-validation class="ma-2">
             <v-layout row wrap>
               <v-flex xs12 sm6>
                 <v-menu
@@ -23,8 +23,10 @@
                       :value="computedDateFormatted"
                       label="Data da operação"
                       prepend-icon="fas fa-calendar"
-                      :rules="dateRules"
-                      required
+                      :error-messages="dateErrors"
+                      @input="$v.date.$touch()"
+                      @blur="$v.date.$touch()"
+                      readonly
                       mask="##/##/####"
                       v-on="on"
                     ></v-text-field>
@@ -48,8 +50,9 @@
                   :loading="systemExchanges.length === 0"
                   prepend-icon="fas fa-university"
                   v-model="exchange"
-                  required
-                  :rules="exchangeRules"
+                  :error-messages="exchangeErrors"
+                  @input="$v.exchange.$touch()"
+                  @blur="$v.exchange.$touch()"
                 ></v-autocomplete>
               </v-flex>
               <v-layout row v-if="exchange === 'Outra'">
@@ -60,8 +63,9 @@
                     id="exchangeName"
                     prepend-icon="fas fa-signature"
                     v-model="exchangeName"
-                    required
-                    :rules="exchangeNameRules"
+                    :error-messages="exchangeNameErrors"
+                    @input="$v.exchangeName.$touch()"
+                    @blur="$v.exchangeName.$touch()"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs12 sm4>
@@ -71,8 +75,9 @@
                     id="exchangeUrl"
                     prepend-icon="fas fa-at"
                     v-model="exchangeUrl"
-                    required
-                    :rules="exchangeUrlRules"
+                    :error-messages="exchangeUrlErrors"
+                    @input="$v.exchangeUrl.$touch()"
+                    @blur="$v.exchangeUrl.$touch()"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs12 sm4>
@@ -82,8 +87,9 @@
                     id="exchangeCountryCode"
                     prepend-icon="fas fa-globe"
                     v-model="exchangeCountryCode"
-                    required
-                    :rules="exchangeCountryCodeRules"
+                    :error-messages="exchangeCountryCodeErrors"
+                    @input="$v.exchangeCountryCode.$touch()"
+                    @blur="$v.exchangeCountryCode.$touch()"
                   ></v-text-field>
                 </v-flex>
               </v-layout>
@@ -95,8 +101,9 @@
                   :items="operationList"
                   prepend-icon="fas fa-exchange-alt"
                   v-model="operation"
-                  required
-                  :rules="operationRules"
+                  :error-messages="operationErrors"
+                  @input="$v.operation.$touch()"
+                  @blur="$v.operation.$touch()"
                 ></v-autocomplete>
               </v-flex>
               <v-flex xs12 sm6 v-if="operation === 'Troca'">
@@ -107,8 +114,9 @@
                   :items="operationTypeList"
                   prepend-icon="fas fa-cash-register"
                   v-model="operationType"
-                  required
-                  :rules="operationTypeRules"
+                  :error-messages="operationTypeErrors"
+                  @input="$v.operationType.$touch()"
+                  @blur="$v.operationType.$touch()"
                 ></v-autocomplete>
               </v-flex>
               <v-flex xs12 v-if="operation !== ''">
@@ -120,8 +128,9 @@
                       id="baseAsset"
                       prepend-icon="fas fa-coins"
                       v-model="baseAsset"
-                      required
-                      :rules="baseAssetRules"
+                      :error-messages="baseAssetErrors"
+                      @input="$v.baseAsset.$touch()"
+                      @blur="$v.baseAsset.$touch()"
                     ></v-text-field>
                   </v-flex>
                   <v-flex xs12 sm6 v-if="operation === 'Troca'">
@@ -131,8 +140,9 @@
                       id="quoteAsset"
                       prepend-icon="fas fa-coins"
                       v-model="quoteAsset"
-                      required
-                      :rules="quoteAssetRules"
+                      :error-messages="quoteAssetErrors"
+                      @input="$v.quoteAsset.$touch()"
+                      @blur="$v.quoteAsset.$touch()"
                     ></v-text-field>
                   </v-flex>
                   <v-flex xs12 sm6>
@@ -142,8 +152,9 @@
                       id="baseAssetQty"
                       prepend-icon="fas fa-balance-scale"
                       v-model="baseAssetQty"
-                      required
-                      :rules="baseAssetQtyRules"
+                      :error-messages="baseAssetQtyErrors"
+                      @input="$v.baseAssetQty.$touch()"
+                      @blur="$v.baseAssetQty.$touch()"
                     ></v-text-field>
                   </v-flex>
                   <v-flex xs12 sm6 v-if="operation === 'Troca'">
@@ -153,8 +164,9 @@
                       id="quoteAssetQty"
                       prepend-icon="fas fa-balance-scale"
                       v-model="quoteAssetQty"
-                      required
-                      :rules="quoteAssetQtyRules"
+                      :error-messages="quoteAssetQtyErrors"
+                      @input="$v.quoteAssetQty.$touch()"
+                      @blur="$v.quoteAssetQty.$touch()"
                     ></v-text-field>
                   </v-flex>
                   <v-flex xs12 sm6 v-if="operation === 'Troca'">
@@ -198,12 +210,27 @@
 
 <script>
 import Date from "@/mixins/Date";
+import { validationMixin } from 'vuelidate'
+import { required } from 'vuelidate/lib/validators'
 
 export default {
   props: {
     visible: Boolean
   },
-  mixins: [Date],
+  mixins: [Date, validationMixin],
+  validations: {
+    date: { required },
+    exchange: { required },
+    exchangeName: { required },
+    exchangeUrl: { required },
+    exchangeCountryCode: { required },
+    operation: { required },
+    operationType: { required },
+    baseAsset: { required },
+    quoteAsset: { required },
+    baseAssetQty: { required },
+    quoteAssetQty: { required }
+  },
   watch: {
     exchange(value) {
       if ((value !== null) & (value !== undefined) & value !== "Outra") {
@@ -229,9 +256,21 @@ export default {
       set(value) {
         if (!value) {
           this.$emit("close");
-          this.$refs.form.reset();
+          this.$v.$reset()
           this.operation = "";
           this.date = "";
+          // this.exchange = "",
+          this.exchangeName = "";
+          this.exchangeUrl = "";
+          this.exchangeCountryCode = "";
+          this.operation = "";
+          this.operationType = "";
+          this.baseAsset = "";
+          this.quoteAsset = "";
+          this.baseAssetQty = "";
+          this.quoteAssetQty = "";
+          this.commissionAsset = "";
+          this.commission = "";
         }
       }
     },
@@ -250,77 +289,103 @@ export default {
       })
       exchangeList.push("Outra");
       return exchangeList;
-    }
+    },
+    dateErrors() {
+      const errors = []
+      if (!this.$v.date.$dirty) return errors
+      !this.$v.date.required && errors.push('Data da operação é obrigatório')
+      return errors
+    },
+    operationErrors() {
+      const errors = []
+      if (!this.$v.operation.$dirty) return errors
+      !this.$v.operation.required && errors.push('Operação é obrigatório')
+      return errors
+    },
+    exchangeErrors() {
+      const errors = []
+      if (!this.$v.exchange.$dirty) return errors
+      !this.$v.exchange.required && errors.push('Exchange é obrigatório')
+      return errors
+    },
+    exchangeNameErrors() {
+      const errors = []
+      if (!this.$v.exchangeName.$dirty) return errors
+      !this.$v.exchangeName.required && errors.push('Nome da exchange é obrigatório')
+      return errors
+    },
+    exchangeUrlErrors() {
+      const errors = []
+      if (!this.$v.exchangeUrl.$dirty) return errors
+      !this.$v.exchangeUrl.required && errors.push('URL da exchange é obrigatório')
+      return errors
+    },
+    exchangeCountryCodeErrors() {
+      const errors = []
+      if (!this.$v.exchangeCountryCode.$dirty) return errors
+      !this.$v.exchangeCountryCode.required && errors.push('País da exchange é obrigatório')
+      return errors
+    },
+    operationTypeErrors() {
+      const errors = []
+      if (!this.$v.operationType.$dirty) return errors
+      !this.$v.operationType.required && errors.push('Tipo da operação é obrigatório')
+      return errors
+    },
+    baseAssetErrors() {
+      const errors = []
+      if (!this.$v.baseAsset.$dirty) return errors
+      !this.$v.baseAsset.required && errors.push('Criptoativo é obrigatório')
+      return errors
+    },
+    baseAssetQtyErrors() {
+      const errors = []
+      if (!this.$v.baseAssetQty.$dirty) return errors
+      !this.$v.baseAssetQty.required && errors.push('Quantidade é obrigatório')
+      return errors
+    },
+    quoteAssetErrors() {
+      const errors = []
+      if (!this.$v.quoteAsset.$dirty) return errors
+      !this.$v.quoteAsset.required && errors.push('Criptoativo de cotação é obrigatório')
+      return errors
+    },
+    quoteAssetQtyErrors() {
+      const errors = []
+      if (!this.$v.quoteAssetQty.$dirty) return errors
+      !this.$v.quoteAssetQty.required && errors.push('Valor é obrigatório')
+      return errors
+    },
+    commissionAssetErrors() {
+      const errors = []
+      if (!this.$v.commissionAsset.$dirty) return errors
+      !this.$v.commissionAsset.required && errors.push('Taxa (criptoativo) é obrigatório')
+      return errors
+    },
+    commissionErrors() {
+      const errors = []
+      if (!this.$v.commission.$dirty) return errors
+      !this.$v.commission.required && errors.push('Valor da taxa é obrigatório')
+      return errors
+    },
   },
   data: () => ({
     valid: true,
     operation: "",
-    operationRules: [
-      v => !!v || "Operação é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     operationList: ["Troca", "Depósito", "Saque"],
     exchange: "",
-    exchangeRules: [
-      v => !!v || "Exchange é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     exchangeName: "",
-    exchangeNameRules: [
-      v => !!v || "Nome da exchange é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     exchangeUrl: "",
-    exchangeUrlRules: [
-      v => !!v || "URL da exchange é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     exchangeCountryCode: "",
-    exchangeCountryCodeRules: [
-      v => !!v || "País da exchange é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     operationType: "",
-    operationTypeRules: [
-      v => !!v || "Tipo da operação é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     operationTypeList: ["Compra", "Venda"],
     date: "",
-    dateRules: [
-      v => !!v || "Data da operação é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     baseAsset: "",
-    baseAssetRules: [
-      v => !!v || "Criptoativo é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     baseAssetQty: "",
-    baseAssetQtyRules: [
-      v => !!v || "Quantidade é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     quoteAsset: "",
-    quoteAssetRules: [
-      v => !!v || "Criptoativo de cotação é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     quoteAssetQty: "",
-    quoteAssetQtyRules: [
-      v => !!v || "Valor é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     commissionAsset: "",
-    commissionAssetRules: [
-      v => !!v || "Taxa (criptoativoo) é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     commission: "",
-    commissionRules: [
-      v => !!v || "Valor da taxa é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     dateMenu: false
   }),
 
@@ -329,7 +394,8 @@ export default {
       this.$refs.dateMenu.save(date);
     },
     onAddOperation() {
-      if (this.$refs.form.validate()) {
+      this.$v.$touch();
+      if (!this.$v.$error) {
         this.$store
           .dispatch("addOperation", {
             date: this.date,

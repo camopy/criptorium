@@ -9,7 +9,7 @@
                 <v-toolbar-title>Cripto RF - Cadastro</v-toolbar-title>
               </v-toolbar>
               <v-card-text>
-                <v-form ref="form" v-model="valid" lazy-validation>
+                <v-form v-model="valid" lazy-validation>
                   <v-layout row wrap>
                     <v-flex xs12>
                       <v-text-field
@@ -68,6 +68,7 @@
                             label="Data de nascimento"
                             prepend-icon="fas fa-calendar"
                             :error-messages="birthdayErrors"
+                            readonly
                             @input="$v.birthday.$touch()"
                             @blur="$v.birthday.$touch()"
                             mask="##/##/####"
@@ -135,7 +136,7 @@
 import Date from "@/mixins/Date";
 import { mask } from "vue-the-mask";
 import { validationMixin } from 'vuelidate'
-import { required, email, minLength } from 'vuelidate/lib/validators'
+import { required, email } from 'vuelidate/lib/validators'
 
 export default {
   directives: {

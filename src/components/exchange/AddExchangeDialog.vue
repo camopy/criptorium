@@ -4,7 +4,7 @@
       <v-card-title class="grey lighten-4 py-4 title">Cadastrar exchange</v-card-title>
       <v-flex xs12>
         <v-container grid-list-sm class="pa-4">
-          <v-form ref="form" v-model="valid" lazy-validation class="ma-2">
+          <v-form v-model="valid" lazy-validation class="ma-2">
             <v-layout row wrap>
               <v-flex xs12>
                 <v-autocomplete
@@ -14,8 +14,9 @@
                   :items="exchangeList"
                   prepend-icon="fas fa-university"
                   v-model="exchange"
-                  required
-                  :rules="exchangeRules"
+                  :error-messages="exchangeErrors"
+                  @input="$v.exchange.$touch()"
+                  @blur="$v.exchange.$touch()"
                 ></v-autocomplete>
               </v-flex>
               <v-flex xs12>
@@ -25,8 +26,9 @@
                   id="apiKey"
                   prepend-icon="fas fa-key"
                   v-model="apiKey"
-                  required
-                  :rules="apiKeyRules"
+                  :error-messages="apiKeyErrors"
+                  @input="$v.apiKey.$touch()"
+                  @blur="$v.apiKey.$touch()"
                 ></v-text-field>
               </v-flex>
               <v-flex xs12>
@@ -36,8 +38,9 @@
                   id="privateKey"
                   prepend-icon="fas fa-key"
                   v-model="privateKey"
-                  required
-                  :rules="privateKeyRules"
+                  :error-messages="privateKeyErrors"
+                  @input="$v.privateKey.$touch()"
+                  @blur="$v.privateKey.$touch()"
                 ></v-text-field>
               </v-flex>
             </v-layout>
@@ -62,9 +65,18 @@
 </template>
 
 <script>
+import { validationMixin } from 'vuelidate'
+import { required } from 'vuelidate/lib/validators'
+
 export default {
   props: {
     visible: Boolean
+  },
+  mixins: [validationMixin],
+  validations: {
+    exchange: { required },
+    apiKey: { required },
+    privateKey: { required },
   },
   computed: {
     dialog: {
@@ -74,31 +86,40 @@ export default {
       set(value) {
         if (!value) {
           this.$emit("close");
-          this.$refs.form.reset();
+          this.$v.$reset();
+          this.exchange = "";
+          this.apiKey = "";
+          this.privateKey = "";
         }
       }
     },
     creating() {
       return this.$store.getters.creating;
+    },
+    exchangeErrors() {
+      const errors = []
+      if (!this.$v.exchange.$dirty) return errors
+      !this.$v.exchange.required && errors.push('Exchange é obrigatório')
+      return errors
+    },
+    apiKeyErrors() {
+      const errors = []
+      if (!this.$v.apiKey.$dirty) return errors
+      !this.$v.apiKey.required && errors.push('API Key é obrigatório')
+      return errors
+    },
+    privateKeyErrors() {
+      const errors = []
+      if (!this.$v.privateKey.$dirty) return errors
+      !this.$v.privateKey.required && errors.push('Private Key é obrigatório')
+      return errors
     }
   },
   data: () => ({
     valid: true,
     exchange: "",
-    exchangeRules: [
-      v => !!v || "Exchange é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     apiKey: "",
-    apiKeyRules: [
-      v => !!v || "API Key é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     privateKey: "",
-    privateKeyRules: [
-      v => !!v || "Private Key é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     exchangeList: [
       "Binance", "Bittrex", "KuCoin", "Bitfinex"
     ]
@@ -106,7 +127,8 @@ export default {
 
   methods: {
     onAddExchange() {
-      if (this.$refs.form.validate()) {
+      this.$v.$touch();
+      if (!this.$v.$error) {
         this.$store
           .dispatch("addExchange", {
             name: this.exchange,
