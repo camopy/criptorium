@@ -146,19 +146,6 @@ function getUserExchange(userId, exchangeId) {
     });
 }
 
-function getUserLastOperations(userId, exchangeId) {
-  return admin
-    .firestore()
-    .collection('users')
-    .doc(userId)
-    .collection('lastOperations')
-    .doc(exchangeId)
-    .get()
-    .then((lastOperationsDoc) => {
-      return lastOperationsDoc.data();
-    });
-}
-
 function getSystemExchange(exchangeId) {
   return admin
     .firestore()
@@ -173,6 +160,65 @@ function getSystemExchange(exchangeId) {
       return {
         id: exchangeDoc.id,
         ...exchangeDoc.data()
+      };
+    });
+}
+
+function getUserExchangeLastTrades(userId, exchangeId) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection('exchanges')
+    .doc(exchangeId)
+    .collection('lastOperations')
+    .doc("trade")
+    .get()
+    .then((tradesDoc) => {
+      return {
+        id: tradesDoc.id,
+        ...tradesDoc.data()
+      };
+    });
+}
+function getUserExchangeLastWhitdraw(userId, exchangeId) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection('exchanges')
+    .doc(exchangeId)
+    .collection('lastOperations')
+    .doc("whitdraw")
+    .get()
+    .then((whitdrawDoc) => {
+      if(!whitdrawDoc.data()) {
+        return false;
+      }
+      return {
+        id: whitdrawDoc.id,
+        ...whitdrawDoc.data()
+      };
+    });
+}
+
+function getUserExchangeLastDeposit(userId, exchangeId) {
+  return admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection('exchanges')
+    .doc(exchangeId)
+    .collection('lastOperations')
+    .doc("deposit")
+    .get()
+    .then((depositDoc) => {
+      if(!depositDoc.data()) {
+        return false;
+      }
+      return {
+        id: depositDoc.id,
+        ...depositDoc.data()
       };
     });
 }
@@ -435,17 +481,43 @@ function setUserOperation(userId, operation, batch) {
   return batch.set(operationDoc, operation);
 }
 
-function setUserLastOperation(userId, exchangeId, operation, batch, merge) {
-  let lastOperation = admin
+function setUserExchangeLastTradeBySymbol(userId, exchangeId, symbolObj, batch) {
+  let trade = admin
     .firestore()
-    .collection('users/' + userId + '/lastOperations/')
-    .doc(exchangeId);
+    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
+    .doc("trade");
 
   if (!batch) {
-    return lastOperation.set(operation, { merge: merge });
+    return trade.update(symbolObj, { merge: true });
   }
 
-  return batch.set(lastOperation, operation, { merge: merge });
+  return batch.update(trade, symbolObj, { merge: true });
+}
+
+function setUserExchangeLastDeposit(userId, exchangeId, depositObj, batch) {
+  let deposit = admin
+    .firestore()
+    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
+    .doc("deposit");
+
+  if (!batch) {
+    return deposit.update(depositObj, { merge: true });
+  }
+
+  return batch.update(deposit, depositObj, { merge: true });
+}
+
+function setUserExchangeLastWhitdraw(userId, exchangeId, whitdrawObj, batch) {
+  let whitdraw = admin
+    .firestore()
+    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
+    .doc("whitdraw");
+
+  if (!batch) {
+    return whitdraw.set(whitdrawObj, { merge: true });
+  }
+
+  return batch.set(whitdraw, whitdrawObj, { merge: true });
 }
 
 function updateUserExchange(userId, exchangeId, data) {
@@ -889,14 +961,18 @@ async function transactionNotificationHandler(notificationCode) {
 
 async function syncBinanceTrades(
   client,
-  lastOperations,
   userId,
   systemExchange,
-  batch
+  userExchange
 ) {
   const timeoutPromises = [];
 
-  let exchangeInfo = await client.exchangeInfo({ useServerTime: true });
+  const promise = [];
+  promise.push(client.exchangeInfo({ useServerTime: true }));
+  promise.push(getUserExchangeLastTrades(userId, userExchange.id));
+  let response = await Promise.all(promise);
+  let exchangeInfo = response[0];
+  let lastTrades = response[1];
 
   exchangeInfo.symbols.forEach((symbolInfo, index) => {
     let timeoutPromise = new Promise((resolve, reject) =>
@@ -910,14 +986,14 @@ async function syncBinanceTrades(
           useServerTime: true
           // recvWindow: 10000000
         };
-        let lastOperation = lastOperations
-          ? lastOperations[symbol] || false
-          : false;
+        let lastOperation = lastTrades[symbol];
 
-        if (lastOperation) tradeParams.fromId = lastOperation.trade + 1;
+        if (lastOperation) tradeParams.fromId = lastOperation + 1;
+
+        const batch = admin.firestore().batch();
 
         client.myTrades(tradeParams).then(
-          (trades) => {
+          async (trades) => {
             let lastTradeId = '';
             trades.forEach((trade) => {
               lastTradeId = trade.id;
@@ -940,16 +1016,16 @@ async function syncBinanceTrades(
 
             if (trades.length > 0) {
               let symbolObj = {};
-              symbolObj[symbol] = { trade: lastTradeId };
-              setUserLastOperation(
+              symbolObj[symbol] = lastTradeId;
+              setUserExchangeLastTradeBySymbol(
                 userId,
-                systemExchange.id,
+                userExchange.id,
                 symbolObj,
-                batch,
-                true
+                batch
               );
             }
 
+            await batch.commit();
             resolve();
           },
           function(error) {
@@ -972,19 +1048,19 @@ async function syncBinanceTrades(
 
 async function syncBinanceDeposits(
   client,
-  lastOperations,
   userId,
   systemExchange,
-  batch
+  userExchange
 ) {
   let depositParams = {
     startTime: 1561950000000,
     useServerTime: true
     // recvWindow: 10000000
   };
-  let lastDeposit = lastOperations ? lastOperations.deposit || false : false;
 
-  if (lastDeposit) depositParams.startTime = lastDeposit + 1;
+  let lastDeposit = await getUserExchangeLastDeposit(userId, userExchange.id);
+
+  if (lastDeposit) depositParams.startTime = lastDeposit.timestamp + 1;
 
   let response = await client.depositHistory(depositParams);
 
@@ -997,6 +1073,7 @@ async function syncBinanceDeposits(
   }
 
   let lastDepositTimestamp = '';
+  const batch = admin.firestore().batch();
   response.depositList.forEach((deposit) => {
     lastDepositTimestamp = deposit.insertTime;
     let symbol = deposit.asset;
@@ -1022,35 +1099,34 @@ async function syncBinanceDeposits(
   });
 
   if (response.depositList.length > 0) {
-    setUserLastOperation(
+    setUserExchangeLastDeposit(
       userId,
-      systemExchange.id,
+      userExchange.id,
       {
-        deposit: lastDepositTimestamp
+        timestamp: lastDepositTimestamp
       },
-      batch,
-      true
+      batch
     );
   }
 
-  return response.depositList;
+  return batch.commit();
 }
 
 async function syncBinanceWhitdraws(
   client,
-  lastOperations,
   userId,
   systemExchange,
-  batch
+  userExchange
 ) {
   let whitdrawParams = {
     startTime: 1561950000000,
     useServerTime: true
     // recvWindow: 10000000
   };
-  let lastWhitdraw = lastOperations ? lastOperations.whitdraw || false : false;
 
-  if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw + 1;
+  let lastWhitdraw = await getUserExchangeLastWhitdraw(userId, userExchange.id);
+
+  if (lastWhitdraw) whitdrawParams.startTime = lastWhitdraw.timestamp + 1;
 
   let response = await client.withdrawHistory(whitdrawParams);
 
@@ -1063,6 +1139,7 @@ async function syncBinanceWhitdraws(
   }
 
   let lastWhitdrawTimestamp = '';
+  const batch = admin.firestore().batch();
   response.withdrawList.forEach((whitdraw) => {
     lastWhitdrawTimestamp = whitdraw.applyTime;
     let symbol = whitdraw.asset;
@@ -1088,24 +1165,22 @@ async function syncBinanceWhitdraws(
   });
 
   if (response.withdrawList.length > 0) {
-    setUserLastOperation(
+    setUserExchangeLastWhitdraw(
       userId,
-      systemExchange.id,
+      userExchange.id,
       {
-        whitdraw: lastWhitdrawTimestamp
+        timestamp: lastWhitdrawTimestamp
       },
-      batch,
-      true
+      batch
     );
   }
 
-  return response.withdrawList;
+  return batch.commit();
 }
 
 async function syncBinanceOperations(
   userId,
   userExchange,
-  userExchangeLastOperations,
   systemExchange
 ) {
   try {
@@ -1114,26 +1189,20 @@ async function syncBinanceOperations(
       apiSecret: userExchange.privateKey
     });
 
-    const batch = admin.firestore().batch();
-    const lastOperations = userExchangeLastOperations
-      ? userExchangeLastOperations
-      : false;
-
     const promises = [];
 
     promises.push(
-      syncBinanceTrades(client, lastOperations, userId, systemExchange, batch)
+      syncBinanceTrades(client, userId, systemExchange, userExchange)
     );
     promises.push(
-      syncBinanceDeposits(client, lastOperations, userId, systemExchange, batch)
+      syncBinanceDeposits(client, userId, systemExchange, userExchange)
     );
     promises.push(
       syncBinanceWhitdraws(
         client,
-        lastOperations,
         userId,
         systemExchange,
-        batch
+        userExchange
       )
     );
     promises.push(
@@ -1143,7 +1212,6 @@ async function syncBinanceOperations(
     );
 
     await Promise.all(promises);
-    await batch.commit();
     return true;
   } catch (error) {
     return errorHandler(error);
@@ -1165,21 +1233,13 @@ exports.syncExchangeOperations = functions
       }
 
       let userExchange = await getUserExchange(userId, data.exchangeId);
-
-      let response = await Promise.all([
-        getUserLastOperations(userId, userExchange.exchangeId),
-        getSystemExchange(userExchange.exchangeId)
-      ]);
-
-      let userExchangeLastOperations = response[0];
-      let systemExchange = response[1];
+      let systemExchange = await getSystemExchange(userExchange.systemExchange);
 
       switch (systemExchange.id) {
         case 'binance':
           return syncBinanceOperations(
             user.id,
             userExchange,
-            userExchangeLastOperations,
             systemExchange
           );
       }

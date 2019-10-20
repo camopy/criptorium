@@ -20,9 +20,6 @@ export default {
     setOperations(state, payload) {
       state.user.operations = payload;
     },
-    setLastOperations(state, payload) {
-      state.user.lastOperations = payload;
-    },
     setMoreOperations(state, payload) {
       state.user.operations.push(...payload);
     }
@@ -69,7 +66,6 @@ export default {
       this.unsubscribeUserListener();
       this.unsubscribeExchangesListener();
       this.unsubscribeOperationsListener();
-      this.unsubscribeLastOperationsListener();
       this.unsubscribeSystemExchangesListener();
       firebase.auth().signOut();
       commit('setUser', null);
@@ -89,8 +85,7 @@ export default {
             id: payload.uid,
             ...doc.data(),
             exchanges: user ? user.exchanges || [] : [],
-            operations: user ? user.operations || [] : [],
-            lastOperations: user ? user.lastOperations || [] : []
+            operations: user ? user.operations || [] : []
           };
           commit('setUser', updatedUser);
         });
@@ -125,19 +120,6 @@ export default {
           commit('setOperations', operations);
         });
       promises.push(this.unsubscribeOperationsListener);
-
-      this.unsubscribeLastOperationsListener = db
-        .collection('users')
-        .doc(payload.uid)
-        .collection('lastOperations')
-        .onSnapshot((querySnapshot) => {
-          let lastOperations = [];
-          querySnapshot.docs.forEach((lastOperation) => {
-            lastOperations[lastOperation.id] = lastOperation.data();
-          });
-          commit('setLastOperations', lastOperations);
-        });
-      promises.push(this.unsubscribeLastOperationsListener);
 
       Promise.all(promises)
         .then(() => {

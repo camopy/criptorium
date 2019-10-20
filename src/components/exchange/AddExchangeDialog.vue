@@ -78,6 +78,16 @@ export default {
     apiKey: { required },
     privateKey: { required },
   },
+  watch: {
+    exchange(value) {
+      if ((value !== null) & (value !== undefined) & value !== "Outra") {
+        let exchange = this.systemExchanges.find(exchange => {
+          return exchange.name === value;
+        })
+        this.exchangeId = exchange.id;
+      }
+    }
+  },
   computed: {
     dialog: {
       get() {
@@ -87,7 +97,8 @@ export default {
         if (!value) {
           this.$emit("close");
           this.$v.$reset();
-          this.exchange = "";
+          // this.exchange = "";
+          this.exchangeId = "";
           this.apiKey = "";
           this.privateKey = "";
         }
@@ -95,6 +106,14 @@ export default {
     },
     creating() {
       return this.$store.getters.creating;
+    },
+    systemExchanges() {
+      return this.$store.getters.systemExchanges;
+    },
+    exchangeList() {
+      return this.$store.getters.systemExchanges.map(exchange => {
+        return exchange.name;
+      });
     },
     exchangeErrors() {
       const errors = []
@@ -120,9 +139,7 @@ export default {
     exchange: "",
     apiKey: "",
     privateKey: "",
-    exchangeList: [
-      "Binance", "Bittrex", "KuCoin", "Bitfinex"
-    ]
+    exchangeId: ""
   }),
 
   methods: {
@@ -134,6 +151,7 @@ export default {
             name: this.exchange,
             apiKey: this.apiKey,
             privateKey: this.privateKey,
+            systemExchange: this.exchangeId,
             lastSync: ""
           })
           .then(() => {

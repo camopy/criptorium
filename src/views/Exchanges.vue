@@ -9,7 +9,7 @@
             dark
             fixed
             color="primary"
-            @click="exchangeDialog = !exchangeDialog"
+            @click="onAddExchange"
           >
             <v-icon>fas fa-plus</v-icon>
           </v-btn>
@@ -36,6 +36,17 @@ export default {
   computed: {
     user() {
       return this.$store.getters.user;
+    },
+    systemExchanges() {
+      return this.$store.getters.systemExchanges;
+    }
+  },
+  methods: {
+    onAddExchange() {
+      if(this.systemExchanges.length === 0) {
+        this.$store.dispatch('loadSystemExchanges');
+      }
+      this.exchangeDialog = !this.exchangeDialog
     }
   }
 };
