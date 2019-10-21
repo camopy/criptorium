@@ -1,5 +1,6 @@
 import { db } from '../main';
 import { functions } from '../main';
+import { analytics } from "@/main";
 
 export default {
   state: {
@@ -29,7 +30,8 @@ export default {
             return paidPlans;
           },
           function(error) {
-            console.log('Error getting plans:', error);
+            console.error('Error getting plans:', error);
+            analytics.logEvent("error", { side: "client", category: "plan", operation: "get", error: error});
             return Promise.reject(error);
           }
         );
@@ -63,6 +65,7 @@ export default {
             message: error.message
           });
           commit('setSigningUserToPagseguroPlan', false);
+          analytics.logEvent("error", { side: "client", category: "plan", action: "sign", error: error});
         }
       });
     },
@@ -85,6 +88,7 @@ export default {
           message: error.message
         });
         commit('setUpdating', false);
+        analytics.logEvent("error", { side: "client", category: "plan", action: "cancel", error: error});
       }
     }
   },

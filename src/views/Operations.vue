@@ -13,7 +13,7 @@
       >
         <v-icon>fas fa-plus</v-icon>
       </v-btn>
-      <AddOperationDialog :visible="operationDialog" @close="operationDialog = false"></AddOperationDialog>
+      <AddOperationDialog :operationDialogTimestamp="operationDialogTimestamp" @close="operationDialogTimestamp = ''"></AddOperationDialog>
     </v-layout>
   </v-container>
 </template>
@@ -21,6 +21,7 @@
 <script>
 import Operations from "../components/operation/Operations";
 import AddOperationDialog from "../components/operation/AddOperationDialog";
+import { analytics } from "@/main";
 
 export default {
   components: {
@@ -28,7 +29,7 @@ export default {
     AddOperationDialog
   },
   data: () => ({
-    operationDialog: false,
+    operationDialogTimestamp: "",
     fab: false
   }),
   computed: {
@@ -44,7 +45,8 @@ export default {
       if(this.systemExchanges.length === 0) {
         this.$store.dispatch('loadSystemExchanges');
       }
-      this.operationDialog = !this.operationDialog
+      analytics.logEvent("add", { category: "operation", action: "click", description: 'Click on add operation'});
+      this.operationDialogTimestamp = this.$moment().format("x");
     }
   }
 };

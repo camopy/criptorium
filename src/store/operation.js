@@ -2,6 +2,7 @@ import { db } from '../main';
 import { functions } from '../main';
 import * as moment from 'moment';
 import { saveAs } from 'file-saver';
+import { analytics } from "@/main";
 
 export default {
   state: {
@@ -42,6 +43,7 @@ export default {
         console.error(error);
         commit('setSnackbarContent', { type: "error", message: error.message });
         commit('setCreating', false);
+        analytics.logEvent("error", { side: "client", category: "generateFile", error: error});
       }
     },
     addOperation({ commit, getters }, payload) {
@@ -87,8 +89,10 @@ export default {
           console.log('Operation added');
         })
         .catch(function(error) {
-          commit('setCreating', false);
           console.error('Error adding operation: ', error);
+          commit('setCreating', false);
+          commit('setSnackbarContent', {type: "error", message: "Erro ao adicionar operação"});
+          analytics.logEvent("error", { side: "client", category: "operation", operation: "set", error: error});
         });
     },
     deleteOperation({ commit, getters }, payload) {
@@ -106,9 +110,10 @@ export default {
           console.log('Operation deleted');
         })
         .catch(function(error) {
+          console.error('Error deleting operation: ', error);
           commit('setDeleting', false);
           commit('setSnackbarContent', {type: "error", message: "Erro ao tentar deletar operação"});
-          console.error('Error deleting operation: ', error);
+          analytics.logEvent("error", { side: "client", category: "operation", operation: "delete", error: error});
         });
     },
     fetchOperations({ commit, getters }) {
@@ -138,6 +143,7 @@ export default {
           function(error) {
             console.error('Error getting user operations:', error);
             commit('setLoading', false);
+            analytics.logEvent("error", { side: "client", category: "operation", operation: "get", error: error});
             return error;
           }
         );
@@ -170,6 +176,7 @@ export default {
           function(error) {
             console.error('Error getting user operations:', error);
             commit('setLoading', false);
+            analytics.logEvent("error", { side: "client", category: "operation", filtered: false, operation: "fetch", error: error});
             return error;
           }
         );
@@ -219,6 +226,7 @@ export default {
           function(error) {
             console.error('Error getting user operations:', error);
             commit('setLoading', false);
+            analytics.logEvent("error", { side: "client", filtered: true, category: "fetch", error: error});
             return error;
           }
         );
@@ -263,6 +271,7 @@ export default {
           function(error) {
             console.error('Error getting user operations:', error);
             commit('setLoading', false);
+            analytics.logEvent("error", { side: "client", filtered: true, category: "fetch", error: error});
             return error;
           }
         );

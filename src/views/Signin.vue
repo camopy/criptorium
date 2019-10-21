@@ -19,8 +19,9 @@
                         prepend-icon="fas fa-envelope"
                         v-model="email"
                         type="email"
-                        required
-                        :rules="emailRules"
+                        :error-messages="emailErrors"
+                        @input="$v.email.$touch()"
+                        @blur="$v.email.$touch()"
                       ></v-text-field>
                     </v-flex>
                   </v-layout>
@@ -33,8 +34,9 @@
                         prepend-icon="fas fa-lock"
                         v-model="password"
                         type="password"
-                        required
-                        :rules="passwordRules"
+                        :error-messages="passwordErrors"
+                        @input="$v.password.$touch()"
+                        @blur="$v.password.$touch()"
                       ></v-text-field>
                     </v-flex>
                   </v-layout>
@@ -61,14 +63,18 @@
 </template>
 
 <script>
+import { analytics } from "@/main";
+import { validationMixin } from 'vuelidate'
+import { required, email } from 'vuelidate/lib/validators'
 export default {
+  mixins: [validationMixin],
+  validations: {
+    email: { required, email },
+    password: { required }
+  },
   data: () => ({
     valid: true,
     email: "",
-    emailRules: [
-      v => !!v || "Digite seu email",
-      v => /.+@.+/.test(v) || "Insira um email válido"
-    ],
     password: "",
     passwordRules: [v => !!v || "Digite sua senha"]
   }),
@@ -84,6 +90,19 @@ export default {
     },
     loading() {
       return this.$store.getters.loading;
+    },
+    emailErrors() {
+      const errors = []
+      if (!this.$v.email.$dirty) return errors
+      !this.$v.email.email && errors.push('Digite um email válido')
+      !this.$v.email.required && errors.push('Email é obrigatório')
+      return errors
+    },
+    passwordErrors() {
+      const errors = []
+      if (!this.$v.password.$dirty) return errors
+      !this.$v.password.required && errors.push('Senha é obrigatório')
+      return errors
     }
   },
   watch: {
@@ -95,18 +114,17 @@ export default {
   },
   methods: {
     onSignUp() {
+      analytics.logEvent("signup", { action: "click", category: "singup"});
       this.$router.push("/signup");
     },
     onSignin() {
       if (this.$refs.form.validate()) {
+        analytics.logEvent("signin", { action: "confirm", category: "signin"});
         this.$store.dispatch("signUserIn", {
           email: this.email,
           password: this.password
         });
       }
-    },
-    onDismissed() {
-      this.$store.dispatch("clearError");
     }
   }
 };

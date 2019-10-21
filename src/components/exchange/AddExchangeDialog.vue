@@ -49,7 +49,7 @@
       </v-flex>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text :disabled="creating" color="secondary" @click="dialog = false">Cancelar</v-btn>
+        <v-btn text :disabled="creating" color="secondary" @click="dialog = ''">Cancelar</v-btn>
         <v-btn
           text
           :disabled="!valid || creating"
@@ -67,12 +67,14 @@
 <script>
 import { validationMixin } from 'vuelidate'
 import { required } from 'vuelidate/lib/validators'
+import Date from "@/mixins/Date";
+import { analytics } from "@/main"
 
 export default {
   props: {
-    visible: Boolean
+    exchangeDialogTimestamp: String
   },
-  mixins: [validationMixin],
+  mixins: [validationMixin, Date],
   validations: {
     exchange: { required },
     apiKey: { required },
@@ -91,7 +93,7 @@ export default {
   computed: {
     dialog: {
       get() {
-        return this.visible;
+        return this.exchangeDialogTimestamp;
       },
       set(value) {
         if (!value) {
@@ -146,6 +148,9 @@ export default {
     onAddExchange() {
       this.$v.$touch();
       if (!this.$v.$error) {
+        let addExchangeTimestamp = this.timestamp();
+        analytics.logEvent("add", {category: "exchange", action: "confirm", description: 'Add exchange'});
+        analytics.logEvent("form", {category: "exchange", description: 'Fill add exchange form', duration: addExchangeTimestamp - this.exchangeDialogTimestamp});
         this.$store
           .dispatch("addExchange", {
             name: this.exchange,
@@ -155,7 +160,8 @@ export default {
             lastSync: ""
           })
           .then(() => {
-            this.dialog = false;
+            analytics.logEvent("firestoreCall", {category: "exchange", operation: "set", description: 'Add exchange to firebase', duration: this.timestamp() - addExchangeTimestamp});
+            this.dialog = "";
           });
       }
     }

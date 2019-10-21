@@ -195,7 +195,7 @@
       </v-flex>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text :disabled="creating" color="secondary" @click="dialog = false">Cancelar</v-btn>
+        <v-btn text :disabled="creating" color="secondary" @click="dialog = ''">Cancelar</v-btn>
         <v-btn
           text
           :disabled="!valid || creating"
@@ -210,12 +210,13 @@
 
 <script>
 import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate'
 import { required } from 'vuelidate/lib/validators'
 
 export default {
   props: {
-    visible: Boolean
+    operationDialogTimestamp: String
   },
   mixins: [Date, validationMixin],
   validations() {
@@ -258,7 +259,7 @@ export default {
   computed: {
     dialog: {
       get() {
-        return this.visible;
+        return this.operationDialogTimestamp;
       },
       set(value) {
         if (!value) {
@@ -403,6 +404,9 @@ export default {
     onAddOperation() {
       this.$v.$touch();
       if (!this.$v.$error) {
+        let addOperationTimestamp = this.timestamp();
+        analytics.logEvent("add", {category: "operation", action: "confirm", description: 'Add operation'});
+        analytics.logEvent("form", {category: "operation", description: "Fill add operation form", duration: addOperationTimestamp - this.operationDialogTimestamp});
         this.$store
           .dispatch("addOperation", {
             date: this.date,
@@ -420,7 +424,8 @@ export default {
             commission: this.commission
           })
           .then(() => {
-            this.dialog = false;
+            analytics.logEvent("firestoreCall", {category: "operation", operation: "set", description: 'Add operation to firebase', duration: this.timestamp() - addOperationTimestamp});
+            this.dialog = "";
           });
       }
     }

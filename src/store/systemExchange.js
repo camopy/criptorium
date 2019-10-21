@@ -1,4 +1,5 @@
 import { db } from '../main';
+import { analytics } from '../main';
 
 export default {
   state: {
@@ -21,7 +22,8 @@ export default {
           return exchanges;
         },
         function(error) {
-          console.log("Error getting system exchanges:", error);
+          console.error("Error getting system exchanges:", error);
+          analytics.logEvent("error", { side: "client", category: "exchange", action: "get", error: error});
           return Promise.reject(error);
         });
     }

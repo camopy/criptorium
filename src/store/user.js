@@ -2,6 +2,7 @@ import firebase from 'firebase/app';
 import 'firebase/auth';
 import { db } from '../main';
 import { functions } from '../main';
+import { analytics } from '../main';
 
 export default {
   state: {
@@ -35,8 +36,10 @@ export default {
           type: "success",
           message: "Usuário criado com sucesso"
         });
+        console.log(response.data);
         commit('setUser', response.data);
         commit('setCreating', false);
+        analytics.logEvent("sign_up", { action: "singup", category: "singup"});
       }
       catch (error) {
         console.error(error);
@@ -45,11 +48,11 @@ export default {
           type: 'error',
           message: error.message
         });
+        analytics.logEvent("error", { side: "client", category: "signup", error: error});
       }
     },
     signUserIn({ commit }, payload) {
       commit('setLoading', true);
-      commit('clearError');
       firebase
         .auth()
         .signInWithEmailAndPassword(payload.email, payload.password)
@@ -57,16 +60,20 @@ export default {
           commit('setLoading', false);
         })
         .catch((error) => {
+          console.error(error);
           commit('setLoading', false);
-          commit('setError', error);
-          console.log(error);
+          let message = ["auth/user-not-found", "auth/wrong-password"].includes(error.code) ? "Usuário ou senha incorreta" : error.message;
+          commit('setSnackbarContent', {
+            type: 'error',
+            message: message
+          });
+          analytics.logEvent("error", { side: "client", category: "signin", error: error});
         });
     },
     logout({ commit }) {
       this.unsubscribeUserListener();
       this.unsubscribeExchangesListener();
       this.unsubscribeOperationsListener();
-      this.unsubscribeSystemExchangesListener();
       firebase.auth().signOut();
       commit('setUser', null);
     },
@@ -128,6 +135,7 @@ export default {
         .catch((error) => {
           commit('setLoading', false);
           console.error('Error fetching data: ', error);
+          analytics.logEvent("error", { side: "client", category: "signin", error: error});
         });
     },
     addExchange({ commit, getters }, payload) {
@@ -149,8 +157,9 @@ export default {
           console.log('Exchange added');
         })
         .catch(function(error) {
-          commit('setCreating', false);
           console.error('Error adding exchange: ', error);
+          commit('setCreating', false);
+          analytics.logEvent("error", { side: "client", category: "exchange", action: "set", error: error});
         });
     }
   },

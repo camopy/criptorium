@@ -29,10 +29,13 @@
 </template>
 
 <script>
+import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 export default {
   props: {
     visible: Boolean
   },
+  mixins: [Date],
   computed: {
     dialog: {
       get() {
@@ -54,12 +57,15 @@ export default {
 
   methods: {
     onCancelPlan() {
+      let cancelPlanTimestamp = this.timestamp();
+      analytics.logEvent("cancel", { category: "plan", action: "confirm", description: "Confirm cancel plan"});
       this.$store
         .dispatch("signoutUserFromPlan", {
           userId: this.user.id,
           planId: this.user.plan.id
         })
         .then(() => {
+          analytics.logEvent("cancel", { category: "plan", action: "cancel", description: "Cancel plan", duration: this.timestamp() - cancelPlanTimestamp});
           this.dialog = false;
         });
     }

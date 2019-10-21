@@ -1,4 +1,5 @@
 import { functions } from "../main";
+import { analytics } from "../main";
 
 export default {
   state: {
@@ -18,14 +19,16 @@ export default {
       };
 
       try {
-        await functions.httpsCallable("syncExchangeOperations", { timeout: 480000 })(params);
+        let response = await functions.httpsCallable("syncExchangeOperations", { timeout: 480000 })(params);
 
         commit('setSnackbarContent', {type: "success", message: "Operações sincronizadas"});
         commit('setCreating', false);
+        return response;
       } catch (error) {
           console.error(error);
           commit('setSnackbarContent', {type: "error", message: error.message});
           commit('setCreating', false);
+          analytics.logEvent("error", {side: "client", category: "syncOperations", error: error});
       }
     }
   },

@@ -62,6 +62,7 @@
 
 <script>
 import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 export default {
   mixins: [Date],
   props: {
@@ -100,11 +101,14 @@ export default {
   methods: {
     onGenerateTextFile() {
       if (this.$refs.form.validate()) {
+        let generateFileTimestamp = this.timestamp();
+        analytics.logEvent("generateFile", { category: "operation", action: "click", description: "Generate operations file" });
         this.$store
           .dispatch("generateTextFile", {
             date: this.date
           })
           .then(() => {
+            analytics.logEvent("generateFile", { category: "operation", action: "generate", description: "Generate file from firebase", duration: this.timestamp() - generateFileTimestamp});
             this.dialog = false;
           });
       }

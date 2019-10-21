@@ -135,6 +135,7 @@
 <script>
 import Date from "@/mixins/Date";
 import { mask } from "vue-the-mask";
+import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate'
 import { required, email } from 'vuelidate/lib/validators'
 
@@ -178,7 +179,7 @@ export default {
     },
     birthdayErrors() {
       const errors = []
-      if (!this.$v.email.$dirty) return errors
+      if (!this.$v.birthday.$dirty) return errors
       !this.$v.birthday.required && errors.push('Data de nascimento é obrigatório')
       return errors
     },
@@ -228,6 +229,7 @@ export default {
     onSignUp() {
       this.$v.$touch();
       if (!this.$v.$error) {
+        analytics.logEvent("signup", { action: "confirm", category: "signup"});
         this.$store.dispatch("signUserUp", {
           name: this.name,
           email: this.email,

@@ -7,20 +7,23 @@ import moment from "moment";
 import firebase from "firebase/app";
 import "firebase/firestore";
 import "firebase/functions";
+import "firebase/analytics";
 import * as Sentry from '@sentry/browser';
 import * as Integrations from '@sentry/integrations';
+
+Vue.config.productionTip = false
+
+const isProd = process.env.NODE_ENV === "production";
 
 moment.locale("pt-br");
 Vue.prototype.$moment = moment;
 
-if(process.env.NODE_ENV === 'production') {
+if(isProd) {
   Sentry.init({
     dsn: 'https://9b0ae9d17fc74821acb9bb1cec6b5949@sentry.io/1784831',
     integrations: [new Integrations.Vue({Vue, attachProps: true})],
   });
 }
-
-Vue.config.productionTip = false
 
 new Vue({
   router,
@@ -35,10 +38,13 @@ new Vue({
       projectId: "cripto-rf-dev",
       storageBucket: "cripto-rf-dev.appspot.com",
       messagingSenderId: "235200254503",
-      appId: "1:235200254503:web:7aa45b7387a0891c"
+      appId: "1:235200254503:web:7aa45b7387a0891c",
+      measurementId: "G-1DSLGLY6SN"
     });
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
+        analytics.setUserId(user.uid);
+        analytics.logEvent("login", user.providerData);
         this.$store.dispatch("fetchUserData", user);
       }
     });
@@ -48,3 +54,4 @@ new Vue({
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const functions = firebase.functions();
+export const analytics = firebase.analytics();

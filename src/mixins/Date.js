@@ -13,6 +13,9 @@ export default {
       if (!date) return null;
 
       return this.$moment(date).format("MM/YYYY");
+    },
+    timestamp() {
+      return this.$moment().format("x");
     }
   }
 };

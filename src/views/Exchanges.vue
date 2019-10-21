@@ -14,8 +14,8 @@
             <v-icon>fas fa-plus</v-icon>
           </v-btn>
       <AddExchangeDialog
-        :visible="exchangeDialog"
-        @close="exchangeDialog = false"
+        :exchangeDialogTimestamp="exchangeDialogTimestamp"
+        @close="exchangeDialogTimestamp = ''"
       ></AddExchangeDialog>
     </v-layout>
   </v-container>
@@ -24,14 +24,17 @@
 <script>
 import Exchanges from "../components/exchange/Exchanges";
 import AddExchangeDialog from "../components/exchange/AddExchangeDialog";
+import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 
 export default {
   components: {
     Exchanges,
     AddExchangeDialog
   },
+  mixins: [Date],
   data: () => ({
-    exchangeDialog: false
+    exchangeDialogTimestamp: ""
   }),
   computed: {
     user() {
@@ -46,7 +49,8 @@ export default {
       if(this.systemExchanges.length === 0) {
         this.$store.dispatch('loadSystemExchanges');
       }
-      this.exchangeDialog = !this.exchangeDialog
+      analytics.logEvent("add", {category: "exchange", action: "click", description: "Click on add exchange"});
+      this.exchangeDialogTimestamp = this.timestamp();
     }
   }
 };

@@ -71,6 +71,7 @@
 
 <script>
 import SignPlanStepper from "../components/plan/SignPlanStepper";
+import { analytics } from "@/main";
 
 export default {
   components: {
@@ -101,6 +102,7 @@ export default {
       this.$router.push("/signin");
     },
     onUpgradeAccount() {
+      analytics.logEvent("begin_checkout", { category: "plan", description: "Click on upgrade plan"});
       if(this.paidPlans.length === 0) {
         this.$store.dispatch("loadPaidPlans");
       }

@@ -34,6 +34,7 @@
 
 <script>
 import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 
 export default {
   mixins: [Date],
@@ -50,7 +51,11 @@ export default {
   },
   methods: {
     onSync(exchange) {
-      return this.$store.dispatch("syncExchangeOperations", exchange);
+      let syncTimestamp = this.timestamp();
+      analytics.logEvent("sync", { category: "exchange", action: "click", description: "Sync exchange operations", exchange: exchange.id});
+      return this.$store.dispatch("syncExchangeOperations", exchange).then(() => {
+        analytics.logEvent("sync", { category: "exchange", action: "sync", description: "Exchange API call", exchange: exchange.id, duration: this.timestamp() - syncTimestamp});
+      });
     }
   }
 };

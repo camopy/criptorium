@@ -15,7 +15,7 @@
     "core-js": "^2.6.5",
     "dns": "^0.2.2",
     "file-saver": "^2.0.2",
-    "firebase": "^6.3.4",
+    "firebase": "^7.2.1",
     "moment": "^2.24.0",
     "querystring": "^0.2.0",
     "vue": "^2.6.10",

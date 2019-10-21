@@ -113,6 +113,7 @@
 
 <script>
 import Date from "@/mixins/Date";
+import { analytics } from "@/main";
 import GenerateOperationsTextFileDialog from "@/components/operation/GenerateOperationsTextFileDialog";
 
 export default {
@@ -168,16 +169,20 @@ export default {
   },
   methods: {
     fetchOperationsFromFirestore() {
+      analytics.logEvent("fetch", { category: "operation", filtered: false, description: "Fetch more operations"});
       return this.$store.dispatch("fetchMoreOperations");
     },
     fetchOperationsFromFirestoreByMonth(date) {
+      analytics.logEvent("fetch", { category: "operation", filtered: true, description: "Fetch more operations by month"});
       return this.$store.dispatch("fetchMoreOperationsByMonth", date);
     },
     filterOperationsFromFirestore() {
       this.date = "";
+      analytics.logEvent("filter", { category: "operation", filtered: false, description: "Reset filter operations"});
       return this.$store.dispatch("fetchOperations");
     },
     filterOperationsByDateFromFirestore(date) {
+      analytics.logEvent("filter", { category: "operation", filtered: true, description: "Filter operations by month"});
       return this.$store.dispatch("fetchOperationsByMonth", date);
     },
     bottomVisible() {
@@ -192,7 +197,11 @@ export default {
       this.$refs.dateMenu.save(date);
     },
     onDeleteOperation(operation) {
-      this.$store.dispatch("deleteOperation", operation);
+      let deleteOperationTimestamp = this.timestamp();
+      analytics.logEvent("delete", { category: "operation", description: "Delete operation"})
+      this.$store.dispatch("deleteOperation", operation).then(() => {
+        analytics.logEvent("firestoreCall", { category: "operation", operation: "delete", description: "Delete operation from firebase", duration: this.timestamp() - deleteOperationTimestamp});
+      });
     }
   }
 };
