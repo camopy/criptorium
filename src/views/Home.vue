@@ -65,24 +65,26 @@
     <v-content>
       <router-view></router-view>
     </v-content>
-    <SignPlanStepper :visible="signPlanStepperDialog" @close="signPlanStepperDialog = false" />
+    <SignPlanStepper :signPlanStepperDialogTimestamp="signPlanStepperDialogTimestamp" @close="signPlanStepperDialogTimestamp = ''" />
   </v-app>
 </template>
 
 <script>
 import SignPlanStepper from "../components/plan/SignPlanStepper";
 import { analytics } from "@/main";
+import Date from "@/mixins/Date";
 
 export default {
   components: {
     SignPlanStepper
   },
+  mixins: [Date],
   props: {
     source: String
   },
   data: () => ({
     drawer: null,
-    signPlanStepperDialog: false,
+    signPlanStepperDialogTimestamp: "",
     items: [
       { icon: "fas fa-exchange-alt", text: "Operações", to: "/operations" },
       { icon: "fas fa-university", text: "Exchanges", to: "/exchanges" }
@@ -106,7 +108,7 @@ export default {
       if(this.paidPlans.length === 0) {
         this.$store.dispatch("loadPaidPlans");
       }
-      this.signPlanStepperDialog = !this.signPlanStepperDialog
+      this.signPlanStepperDialogTimestamp = this.timestamp();
     }
   }
 };

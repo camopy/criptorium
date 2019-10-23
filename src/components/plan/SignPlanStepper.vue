@@ -12,7 +12,7 @@
             <v-card-title>Plano Pro</v-card-title>
             <v-card-text>
               Tenha acesso à sincronização das operações feitas em exchanges cadastradas através da API disponibilizada por cada uma delas
-              <v-radio-group v-model="plan" column>
+              <v-radio-group v-model="plan" column :error-messages="planErrors">
                 <v-radio v-for="plan in plans" :key="plan.id"
                   :label="plan.period === 'yearly' ? 'Anual: R$' + plan.price.toFixed(2) + ' - equivalente a R$' + (plan.price/12).toFixed(2) + ' por mês' : 'Mensal: R$' + plan.price.toFixed(2)"
                   :value="plan"
@@ -37,9 +37,10 @@
                       label="Telefone"
                       id="phone"
                       v-model="phone"
-                      required
                       v-mask="phoneMask"
-                      :rules="phoneRules"
+                      :error-messages="phoneErrors"
+                      @input="$v.phone.$touch()"
+                      @blur="$v.phone.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -50,9 +51,10 @@
                       label="CEP"
                       id="CEP"
                       v-model="CEP"
-                      required
                       v-mask="CEPMask"
-                      :rules="CEPRules"
+                      :error-messages="CEPErrors"
+                      @input="$v.CEP.$touch()"
+                      @blur="$v.CEP.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -63,8 +65,9 @@
                       label="Rua"
                       id="street"
                       v-model="street"
-                      required
-                      :rules="streetRules"
+                      :error-messages="streetErrors"
+                      @input="$v.street.$touch()"
+                      @blur="$v.street.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -75,8 +78,9 @@
                       label="Número"
                       id="streetNumber"
                       v-model="streetNumber"
-                      required
-                      :rules="streetNumberRules"
+                      :error-messages="streetNumberErrors"
+                      @input="$v.streetNumber.$touch()"
+                      @blur="$v.streetNumber.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -87,8 +91,9 @@
                       label="Coplemento"
                       id="complement"
                       v-model="complement"
-                      required
-                      :rules="complementRules"
+                      :error-messages="complementErrors"
+                      @input="$v.complement.$touch()"
+                      @blur="$v.complement.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -99,8 +104,9 @@
                       label="Bairro"
                       id="district"
                       v-model="district"
-                      required
-                      :rules="districtRules"
+                      :error-messages="districtErrors"
+                      @input="$v.district.$touch()"
+                      @blur="$v.district.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -111,8 +117,9 @@
                       label="Cidade"
                       id="city"
                       v-model="city"
-                      required
-                      :rules="cityRules"
+                      :error-messages="cityErrors"
+                      @input="$v.city.$touch()"
+                      @blur="$v.city.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -123,8 +130,9 @@
                       label="Estado"
                       id="state"
                       v-model="state"
-                      required
-                      :rules="stateRules"
+                      :error-messages="stateErrors"
+                      @input="$v.state.$touch()"
+                      @blur="$v.state.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -149,9 +157,10 @@
                       label="Número"
                       id="cardNumber"
                       v-model="cardNumber"
-                      required
                       v-mask="cardNumberMask"
-                      :rules="cardNumberRules"
+                      :error-messages="cardNumberErrors"
+                      @input="$v.cardNumber.$touch()"
+                      @blur="$v.cardNumber.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -162,8 +171,9 @@
                       label="Nome"
                       id="cardName"
                       v-model="cardName"
-                      required
-                      :rules="cardNameRules"
+                      :error-messages="cardNameErrors"
+                      @input="$v.cardName.$touch()"
+                      @blur="$v.cardName.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -174,9 +184,10 @@
                       label="Data de validade"
                       id="cardDate"
                       v-model="cardDate"
-                      required
                       v-mask="cardDateMask"
-                      :rules="cardDateRules"
+                      :error-messages="cardDateErrors"
+                      @input="$v.cardDate.$touch()"
+                      @blur="$v.cardDate.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
@@ -187,15 +198,16 @@
                       label="Código de segurança"
                       id="cardSecurityCode"
                       v-model="cardSecurityCode"
-                      required
                       v-mask="cardSecurityCodeMask"
-                      :rules="cardSecurityCodeRules"
+                      :error-messages="cardSecurityCodeErrors"
+                      @input="$v.cardSecurityCode.$touch()"
+                      @blur="$v.cardSecurityCode.$touch()"
                     ></v-text-field>
                   </v-container>
                 </v-flex>
                 <v-flex xs12>
                   <v-container>
-                    <v-radio-group v-model="cardHolderRadio" row>
+                    <v-radio-group v-model="cardHolderRadio" row :error-messages="cardHolderRadioErrors">
                       <v-radio label="Sou o titular do cartão" value="true"></v-radio>
                       <v-radio label="Não sou o titular do cartão" value="false"></v-radio>
                     </v-radio-group>
@@ -210,9 +222,10 @@
                           label="CPF do titular"
                           id="cardHolderCpf"
                           v-model="cardHolderCpf"
-                          required
                           v-mask="cardHolderCpfMask"
-                          :rules="cardHolderCpfRules"
+                          :error-messages="cardHolderCpfErrors"
+                          @input="$v.cardHolderCpf.$touch()"
+                          @blur="$v.cardHolderCpf.$touch()"
                         ></v-text-field>
                       </v-container>
                     </v-flex>
@@ -223,9 +236,10 @@
                           label="Data de nascimento do titular"
                           id="cardHolderBirthdate"
                           v-model="cardHolderBirthdate"
-                          required
                           v-mask="cardHolderBirthdateMask"
-                          :rules="cardHolderBirthdateRules"
+                          :error-messages="cardHolderBirthdateErrors"
+                          @input="$v.cardHolderBirthdate.$touch()"
+                          @blur="$v.cardHolderBirthdate.$touch()"
                         ></v-text-field>
                       </v-container>
                     </v-flex>
@@ -236,9 +250,10 @@
                           label="Telefone do titular"
                           id="cardHolderPhone"
                           v-model="cardHolderPhone"
-                          required
                           v-mask="cardHolderPhoneMask"
-                          :rules="cardHolderPhoneRules"
+                          :error-messages="cardHolderPhoneErrors"
+                          @input="$v.cardHolderPhone.$touch()"
+                          @blur="$v.cardHolderPhone.$touch()"
                         ></v-text-field>
                       </v-container>
                     </v-flex>
@@ -257,6 +272,10 @@
 
 <script>
 import { mask } from "vue-the-mask";
+import { analytics } from "@/main";
+import Date from "@/mixins/Date";
+import { validationMixin } from 'vuelidate';
+import { required } from 'vuelidate/lib/validators';
 
 export default {
   mounted() {
@@ -270,13 +289,42 @@ export default {
   directives: {
     mask
   },
+  mixins: [Date, validationMixin],
   props: {
-    visible: Boolean
+    signPlanStepperDialogTimestamp: String
   },
   watch: {
     signingUserToPagseguroPlan() {
       this.dialog = this.signingUserToPagseguroPlan;
     }
+  },
+  validations() {
+    let validationFields = {
+      plan: { required },
+      cardNumber: { required },
+      cardName: { required },
+      cardDate: { required },
+      cardSecurityCode: { required },
+      cardHolderRadio: { required }
+    };
+
+    if(!this.user.address || !this.user.phone) {
+      validationFields.phone = { required };
+      validationFields.CEP = { required };
+      validationFields.street = { required };
+      validationFields.streetNumber = { required };
+      validationFields.complement = { required };
+      validationFields.district = { required };
+      validationFields.city = { required };
+      validationFields.state = { required };
+      validationFields.city = { required };
+    }
+
+    validationFields.cardHolderCpf = this.cardHolderRadio ? "" : { required };
+    validationFields.cardHolderBirthdate = this.cardHolderRadio ? "" : { required };
+    validationFields.cardHolderPhone = this.cardHolderRadio ? "" : { required };
+
+    return validationFields;
   },
   computed: {
     plans() {
@@ -290,12 +338,13 @@ export default {
     },
     dialog: {
       get() {
-        return this.visible;
+        return this.signPlanStepperDialogTimestamp;
       },
       set(value) {
         if (!value) {
           this.$emit("close");
           this.$refs.form.reset();
+          this.$v.$reset();
           this.stepper = 1;
           this.plan = "";
           this.cardHolderRadio = "";
@@ -331,6 +380,108 @@ export default {
     },
     userInfoStepNumber() {
       return (!this.user.address || !this.user.phone) ? 2 : 3;
+    },
+    planErrors() {
+      const errors = []
+      if (!this.$v.plan.$dirty) return errors
+      !this.$v.plan.required && errors.push('Plano é obrigatório')
+      return errors
+    },
+    phoneErrors() {
+      const errors = []
+      if (!this.$v.phone.$dirty) return errors
+      !this.$v.phone.required && errors.push('Telefone é obrigatório')
+      return errors
+    },
+    cardHolderRadioErrors() {
+      const errors = []
+      if (!this.$v.cardHolderRadio.$dirty) return errors
+      !this.$v.cardHolderRadio.required && errors.push('Titular é obrigatório')
+      return errors
+    },
+    cardHolderPhoneErrors() {
+      const errors = []
+      if (!this.$v.cardHolderPhone.$dirty) return errors
+      !this.$v.cardHolderPhone.required && errors.push('Telefone do titular é obrigatório')
+      return errors
+    },
+    cardHolderBirthdateErrors() {
+      const errors = []
+      if (!this.$v.cardHolderBirthdate.$dirty) return errors
+      !this.$v.cardHolderBirthdate.required && errors.push('Data de nascimento do titular é obrigatório')
+      return errors
+    },
+    cardHolderCpfErrors() {
+      const errors = []
+      if (!this.$v.cardHolderCpf.$dirty) return errors
+      !this.$v.cardHolderCpf.required && errors.push('CPF do titular é obrigatório')
+      return errors
+    },
+    CEPErrors() {
+      const errors = []
+      if (!this.$v.CEP.$dirty) return errors
+      !this.$v.CEP.required && errors.push('CEP é obrigatório')
+      return errors
+    },
+    streetErrors() {
+      const errors = []
+      if (!this.$v.street.$dirty) return errors
+      !this.$v.street.required && errors.push('Rua é obrigatório')
+      return errors
+    },
+    streetNumberErrors() {
+      const errors = []
+      if (!this.$v.streetNumber.$dirty) return errors
+      !this.$v.streetNumber.required && errors.push('Número da rua é obrigatório')
+      return errors
+    },
+    complementErrors() {
+      const errors = []
+      if (!this.$v.complement.$dirty) return errors
+      !this.$v.complement.required && errors.push('Complemento é obrigatório')
+      return errors
+    },
+    districtErrors() {
+      const errors = []
+      if (!this.$v.district.$dirty) return errors
+      !this.$v.district.required && errors.push('Bairro é obrigatório')
+      return errors
+    },
+    cityErrors() {
+      const errors = []
+      if (!this.$v.city.$dirty) return errors
+      !this.$v.city.required && errors.push('Cidade é obrigatório')
+      return errors
+    },
+    stateErrors() {
+      const errors = []
+      if (!this.$v.state.$dirty) return errors
+      !this.$v.state.required && errors.push('Estado é obrigatório')
+      return errors
+    },
+    cardNumberErrors() {
+      const errors = []
+      if (!this.$v.cardNumber.$dirty) return errors
+      !this.$v.cardNumber.required && errors.push('Número do cartão é obrigatório')
+      return errors
+    },
+    cardNameErrors() {
+      const errors = []
+      if (!this.$v.cardName.$dirty) return errors
+      !this.$v.cardName.required && errors.push('Nome no cartão é obrigatório')
+      return errors
+    },
+    cardDateErrors() {
+      const errors = []
+      if (!this.$v.cardDate.$dirty) return errors
+      !this.$v.cardDate.required && errors.push('Data de validade do cartão é obrigatório')
+      return errors
+    },
+    cardSecurityCodeErrors() {
+      const errors = []
+      if (!this.$v.cardSecurityCode.$dirty) return errors
+      !this.$v.cardSecurityCode.required && errors.push('Código de segurança do cartão é obrigatório')
+      return errors
     }
   },
   data: () => ({
@@ -340,92 +491,36 @@ export default {
     cardHolderRadio: "",
     phone: "",
     phoneMask: "(##)#####-####",
-    phoneRules: [
-      v => !!v || "Telefone é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardHolderPhone: "",
     cardHolderPhoneMask: "(##)#####-####",
-    cardHolderPhoneRules: [
-      v => !!v || "Telefone do titular é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardHolderBirthdate: "",
     cardHolderBirthdateMask: "##/##/####",
-    cardHolderBirthdateRules: [
-      v => !!v || "Data de nascimento do titular é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardHolderCpf: "",
     cardHolderCpfMask: "###.###.###-##",
-    cardHolderCpfRules: [
-      v => !!v || "CPF do titular é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     CEP: "",
     CEPMask: "#####-###",
-    CEPRules: [
-      v => !!v || "CEP é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     street: "",
-    streetRules: [
-      v => !!v || "Rua é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     streetNumber: "",
-    streetNumberRules: [
-      v => !!v || "Número é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     complement: "",
-    complementRules: [
-      v => !!v || "Complemento é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     district: "",
-    districtRules: [
-      v => !!v || "Bairro é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     city: "",
-    cityRules: [
-      v => !!v || "Cidade é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     state: "",
-    stateRules: [
-      v => !!v || "Estado é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardNumber: "",
     cardNumberMask: "#### #### #### ####",
-    cardNumberRules: [
-      v => !!v || "Número do cartão é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardName: "",
-    cardNameRules: [
-      v => !!v || "Nome no cartão é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardDate: "",
     cardDateMask: "##/##",
-    cardDateRules: [
-      v => !!v || "Data de validade do cartão é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ],
     cardSecurityCode: "",
-    cardSecurityCodeMask: "###",
-    cardSecurityCodeRules: [
-      v => !!v || "Código de segurança do cartão é obrigatório"
-      // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
-    ]
+    cardSecurityCodeMask: "###"
   }),
 
   methods: {
     onSignPlan() {
-      if (this.$refs.form.validate()) {
+      this.$v.$touch();
+      if (!this.$v.$error) {
+        let signPlanTimestamp = this.timestamp();
+        analytics.logEvent("form", {category: "plan", description: "Fill sign plan form", duration: signPlanTimestamp - this.signPlanStepperDialogTimestamp});
+        analytics.logEvent("sign", { category: "plan", action: "confirm", description: "Sign plan"});
         this.$store
           .dispatch("signUserToPlan", {
             plan: this.plan,
@@ -459,6 +554,8 @@ export default {
                 number: this.cardHolderPhone.replace(/ /g,'').substr(2)
               }
             }
+          }).then(() => {
+            analytics.logEvent("signed", { category: "plan", description: "Sign plan", duration: this.timestamp() - signPlanTimestamp});
           })
       }
     }

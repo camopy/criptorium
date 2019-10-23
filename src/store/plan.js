@@ -57,6 +57,7 @@ export default {
             message: "Assinatura enviada para análise de pagamento junto ao PagSeguro"
           });
           commit('setSigningUserToPagseguroPlan', false);
+          return true;
         }
         catch (error) {
           console.error(error);

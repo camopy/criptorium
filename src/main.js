@@ -44,7 +44,7 @@ new Vue({
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         analytics.setUserId(user.uid);
-        analytics.logEvent("login", user.providerData);
+        analytics.logEvent("login", {provider: user.providerData});
         this.$store.dispatch("fetchUserData", user);
       }
     });

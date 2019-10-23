@@ -4,7 +4,7 @@
       <v-card-title class="grey lighten-4 py-4 title">Cadastrar operação</v-card-title>
       <v-flex xs12>
         <v-container grid-list-sm class="pa-4">
-          <v-form v-model="valid" lazy-validation class="ma-2">
+          <v-form ref="form" v-model="valid" lazy-validation class="ma-2">
             <v-layout row wrap>
               <v-flex xs12 sm6>
                 <v-menu
@@ -263,8 +263,9 @@ export default {
       },
       set(value) {
         if (!value) {
+          this.$v.$reset();
+          this.$refs.form.reset();
           this.$emit("close");
-          this.$v.$reset()
           this.operation = "";
           this.date = "";
           // this.exchange = "",
