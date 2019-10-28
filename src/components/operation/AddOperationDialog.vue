@@ -195,7 +195,7 @@
       </v-flex>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text :disabled="creating" color="secondary" @click="dialog = ''">Cancelar</v-btn>
+        <v-btn text :disabled="creating" color="error" @click="dialog = ''">Cancelar</v-btn>
         <v-btn
           text
           :disabled="!valid || creating"

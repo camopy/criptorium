@@ -154,7 +154,6 @@ export default {
             type: 'success',
             message: 'Exchange adicionada com sucesso!'
           });
-          console.log('Exchange added');
         })
         .catch(function(error) {
           console.error('Error adding exchange: ', error);

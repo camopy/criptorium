@@ -13,7 +13,7 @@
       </v-flex>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text :disabled="updating" color="secondary" @click="dialog = false">Voltar</v-btn>
+        <v-btn text :disabled="updating" color="error" @click="dialog = false">Voltar</v-btn>
         <v-btn
           text
           :disabled="updating"
