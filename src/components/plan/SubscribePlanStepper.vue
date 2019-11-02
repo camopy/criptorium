@@ -13,7 +13,7 @@
             <v-card-text>
               Tenha acesso à sincronização das operações feitas em exchanges cadastradas através da API disponibilizada por cada uma delas
               <v-radio-group v-model="plan" column :error-messages="planErrors">
-                <v-radio v-for="plan in plans" :key="plan.id"
+                <v-radio color="primary" v-for="plan in plans" :key="plan.id"
                   :label="plan.period === 'yearly' ? 'Anual: R$' + plan.price.toFixed(2) + ' - equivalente a R$' + (plan.price/12).toFixed(2) + ' por mês' : 'Mensal: R$' + plan.price.toFixed(2)"
                   :value="plan"
                 ></v-radio>
@@ -208,8 +208,8 @@
                 <v-flex xs12>
                   <v-container>
                     <v-radio-group v-model="cardHolderRadio" row :error-messages="cardHolderRadioErrors">
-                      <v-radio label="Sou o titular do cartão" value="true"></v-radio>
-                      <v-radio label="Não sou o titular do cartão" value="false"></v-radio>
+                      <v-radio color="primary" label="Sou o titular do cartão" value="true"></v-radio>
+                      <v-radio color="primary" label="Não sou o titular do cartão" value="false"></v-radio>
                     </v-radio-group>
                   </v-container>
                 </v-flex>

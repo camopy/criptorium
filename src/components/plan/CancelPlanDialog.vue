@@ -14,10 +14,10 @@
       </v-flex>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text :disabled="updating" color="error" @click="dialog = false">Voltar</v-btn>
+        <v-btn text :disabled="updating" @click="dialog = false">Voltar</v-btn>
         <v-btn
           :disabled="updating"
-          color="primary"
+          color="error"
           :loading="updating"
           @click="onCancelPlan"
         >

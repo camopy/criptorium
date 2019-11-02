@@ -20,7 +20,7 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn v-if="user.preApproval.status === 'suspended'" @click="onReactivatePlan">Reativar</v-btn>
+                  <v-btn v-if="user.preApproval.status === 'suspended'" color="primary" @click="onReactivatePlan">Reativar</v-btn>
                   <v-btn text color="error" v-else-if="user.plan.type === 'paid'" @click="onCancelPlan">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
