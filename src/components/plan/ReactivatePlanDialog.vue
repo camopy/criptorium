@@ -68,7 +68,7 @@ export default {
           userId: this.user.id
         })
         .then(() => {
-          analytics.logEvent("resubscribe", { category: "plan", action: "resubscribe", description: "Reactivate plan", duration: this.timestamp() - reactivatePlanTimestamp});
+          analytics.logEvent("resubscribed", { category: "plan", description: "Plan resubscribed", duration: Number(this.timestamp()) - Number(reactivatePlanTimestamp)});
           this.dialog = false;
         });
     }

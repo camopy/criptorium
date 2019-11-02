@@ -150,8 +150,8 @@ export default {
       this.$v.$touch();
       if (!this.$v.$error) {
         let addExchangeTimestamp = this.timestamp();
-        analytics.logEvent("add", {category: "exchange", action: "confirm", description: 'Add exchange'});
-        analytics.logEvent("form", {category: "exchange", description: 'Fill add exchange form', duration: addExchangeTimestamp - this.exchangeDialogTimestamp});
+        analytics.logEvent("add", {category: "exchange", action: "confirm", description: 'Confirm add exchange'});
+        analytics.logEvent("form", {category: "exchange", description: 'Fill add exchange form', duration: Number(addExchangeTimestamp) - Number(this.exchangeDialogTimestamp)});
         this.$store
           .dispatch("addExchange", {
             name: this.exchange,
@@ -161,7 +161,7 @@ export default {
             lastSync: ""
           })
           .then(() => {
-            analytics.logEvent("firestoreCall", {category: "exchange", operation: "set", description: 'Add exchange to firebase', duration: this.timestamp() - addExchangeTimestamp});
+            analytics.logEvent("firestoreCall", {category: "exchange", operation: "set", description: 'Add exchange to firebase', duration: Number(this.timestamp()) - Number(addExchangeTimestamp)});
             this.dialog = "";
             console.log('Exchange added');
           });

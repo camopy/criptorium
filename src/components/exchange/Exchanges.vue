@@ -52,7 +52,7 @@ export default {
             action: "sync",
             description: "Exchange API call",
             exchange: exchange.id,
-            duration: this.timestamp() - syncTimestamp
+            duration: Number(this.timestamp()) - Number(syncTimestamp)
           });
         });
     }

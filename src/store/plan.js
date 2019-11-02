@@ -1,6 +1,7 @@
 import { db } from '../main';
 import { functions } from '../main';
 import { analytics } from "@/main";
+import * as moment from 'moment';
 
 export default {
   state: {
@@ -38,6 +39,9 @@ export default {
     },
     subscribeUserToPlan({ commit, getters }, payload) {
       commit('setSubscribingUserToPagseguroPlan', true);
+      let subscribePlanTimestamp = moment().format("x");
+      analytics.logEvent("form", {category: "plan", description: "Fill subscribe plan form", duration: Number(subscribePlanTimestamp) - Number(this.subscribePlanStepperDialogTimestamp)});
+      analytics.logEvent("subscribe", { category: "plan", action: "confirm", description: "Subscribe plan"});
       let params = {
         userId: getters.user.id,
         ...payload
@@ -57,6 +61,7 @@ export default {
             message: "Assinatura enviada para análise de pagamento junto ao PagSeguro"
           });
           commit('setSubscribingUserToPagseguroPlan', false);
+          analytics.logEvent("subscribed", { category: "plan", description: "Subscribed to plan", duration: Number(moment().format("x")) - Number(subscribePlanTimestamp)});
           return true;
         }
         catch (error) {
@@ -89,7 +94,7 @@ export default {
           message: error.message
         });
         commit('setUpdating', false);
-        analytics.logEvent("error", { side: "client", category: "plan", action: "cancel", error: error});
+        analytics.logEvent("error", { side: "client", category: "plan", action: "unsubscribe", error: error});
       }
     },
     async resubscribeUserToPlan({ commit }) {

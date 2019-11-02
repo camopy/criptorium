@@ -39,7 +39,7 @@ export default {
         console.log(response.data);
         commit('setUser', response.data);
         commit('setCreating', false);
-        analytics.logEvent("sign_up", { action: "singup", category: "singup"});
+        analytics.logEvent("sign_up", {category: "singup"});
       }
       catch (error) {
         console.error(error);

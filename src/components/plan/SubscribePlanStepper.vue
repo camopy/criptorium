@@ -272,7 +272,6 @@
 
 <script>
 import { mask } from "vue-the-mask";
-import { analytics } from "@/main";
 import Date from "@/mixins/Date";
 import { validationMixin } from 'vuelidate';
 import { required } from 'vuelidate/lib/validators';
@@ -518,9 +517,6 @@ export default {
     onSubscribeToPlan() {
       this.$v.$touch();
       if (!this.$v.$error) {
-        let subscribePlanTimestamp = this.timestamp();
-        analytics.logEvent("form", {category: "plan", description: "Fill subscribe plan form", duration: subscribePlanTimestamp - this.subscribePlanStepperDialogTimestamp});
-        analytics.logEvent("subscribe", { category: "plan", action: "confirm", description: "Subscribe plan"});
         this.$store
           .dispatch("subscribeUserToPlan", {
             plan: this.plan,
@@ -554,8 +550,6 @@ export default {
                 number: this.cardHolderPhone.replace(/ /g,'').substr(2)
               }
             }
-          }).then(() => {
-            analytics.logEvent("subscribed", { category: "plan", description: "Subscribe plan", duration: this.timestamp() - subscribePlanTimestamp});
           })
       }
     }

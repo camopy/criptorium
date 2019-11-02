@@ -198,9 +198,9 @@ export default {
     },
     onDeleteOperation(operation) {
       let deleteOperationTimestamp = this.timestamp();
-      analytics.logEvent("delete", { category: "operation", description: "Delete operation"})
+      analytics.logEvent("delete", { category: "operation", action: "confirm", description: "Delete operation"})
       this.$store.dispatch("deleteOperation", operation).then(() => {
-        analytics.logEvent("firestoreCall", { category: "operation", operation: "delete", description: "Delete operation from firebase", duration: this.timestamp() - deleteOperationTimestamp});
+        analytics.logEvent("firestoreCall", { category: "operation", operation: "delete", description: "Delete operation from firebase", duration: Number(this.timestamp()) - Number(deleteOperationTimestamp)});
       });
     }
   }

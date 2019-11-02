@@ -406,8 +406,8 @@ export default {
       this.$v.$touch();
       if (!this.$v.$error) {
         let addOperationTimestamp = this.timestamp();
-        analytics.logEvent("add", {category: "operation", action: "confirm", description: 'Add operation'});
-        analytics.logEvent("form", {category: "operation", description: "Fill add operation form", duration: addOperationTimestamp - this.operationDialogTimestamp});
+        analytics.logEvent("add", {category: "operation", action: "confirm", description: 'Confirm add operation'});
+        analytics.logEvent("form", {category: "operation", description: "Fill add operation form", duration: Number(addOperationTimestamp) - Number(this.operationDialogTimestamp)});
         this.$store
           .dispatch("addOperation", {
             date: this.date,
@@ -425,7 +425,7 @@ export default {
             commission: this.commission
           })
           .then(() => {
-            analytics.logEvent("firestoreCall", {category: "operation", operation: "set", description: 'Add operation to firebase', duration: this.timestamp() - addOperationTimestamp});
+            analytics.logEvent("firestoreCall", {category: "operation", operation: "set", description: 'Add operation to firebase', duration: Number(this.timestamp()) - Number(addOperationTimestamp)});
             this.dialog = "";
           });
       }

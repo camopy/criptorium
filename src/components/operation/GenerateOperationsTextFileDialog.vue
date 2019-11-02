@@ -108,7 +108,7 @@ export default {
             date: this.date
           })
           .then(() => {
-            analytics.logEvent("generateFile", { category: "operation", action: "generate", description: "Generate file from firebase", duration: this.timestamp() - generateFileTimestamp});
+            analytics.logEvent("generateFile", { category: "operation", action: "generate", description: "Generate file from firebase", duration: Number(this.timestamp()) - Number(generateFileTimestamp)});
             this.dialog = false;
           });
       }

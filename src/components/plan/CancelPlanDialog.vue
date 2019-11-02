@@ -62,11 +62,11 @@ export default {
   methods: {
     onCancelPlan() {
       let cancelPlanTimestamp = this.timestamp();
-      analytics.logEvent("cancel", { category: "plan", action: "confirm", description: "Confirm cancel plan"});
+      analytics.logEvent("unsubscribe", { category: "plan", action: "confirm", description: "Confirm cancel plan"});
       this.$store
         .dispatch("unsubscribeUserFromPlan")
         .then(() => {
-          analytics.logEvent("cancel", { category: "plan", action: "cancel", description: "Cancel plan", duration: this.timestamp() - cancelPlanTimestamp});
+          analytics.logEvent("unsubscribed", { category: "plan", description: "Plan unsubscribed", duration: Number(this.timestamp()) - Number(cancelPlanTimestamp)});
           this.dialog = false;
         });
     }
