@@ -64,7 +64,7 @@ export default {
       let cancelPlanTimestamp = this.timestamp();
       analytics.logEvent("cancel", { category: "plan", action: "confirm", description: "Confirm cancel plan"});
       this.$store
-        .dispatch("signoutUserFromPlan")
+        .dispatch("unsubscribeUserFromPlan")
         .then(() => {
           analytics.logEvent("cancel", { category: "plan", action: "cancel", description: "Cancel plan", duration: this.timestamp() - cancelPlanTimestamp});
           this.dialog = false;

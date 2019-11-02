@@ -262,7 +262,7 @@
               </v-layout>
             </v-card-text>
           </v-card>
-          <v-btn color="primary" :loading="signingUserToPagseguroPlan" :disabled="!valid" @click="onSignPlan">Assinar</v-btn>
+          <v-btn color="primary" :loading="subscribingUserToPagseguroPlan" :disabled="!valid" @click="onSubscribeToPlan">Assinar</v-btn>
           <v-btn text @click="dialog = false">Cancel</v-btn>
         </v-stepper-content>
       </v-stepper>
@@ -291,11 +291,11 @@ export default {
   },
   mixins: [Date, validationMixin],
   props: {
-    signPlanStepperDialogTimestamp: String
+    subscribePlanStepperDialogTimestamp: String
   },
   watch: {
-    signingUserToPagseguroPlan() {
-      this.dialog = this.signingUserToPagseguroPlan;
+    subscribingUserToPagseguroPlan() {
+      this.dialog = this.subscribingUserToPagseguroPlan;
     }
   },
   validations() {
@@ -333,12 +333,12 @@ export default {
     user() {
       return this.$store.getters.user;
     },
-    signingUserToPagseguroPlan() {
-      return this.$store.getters.signingUserToPagseguroPlan;
+    subscribingUserToPagseguroPlan() {
+      return this.$store.getters.subscribingUserToPagseguroPlan;
     },
     dialog: {
       get() {
-        return this.signPlanStepperDialogTimestamp;
+        return this.subscribePlanStepperDialogTimestamp;
       },
       set(value) {
         if (!value) {
@@ -515,14 +515,14 @@ export default {
   }),
 
   methods: {
-    onSignPlan() {
+    onSubscribeToPlan() {
       this.$v.$touch();
       if (!this.$v.$error) {
-        let signPlanTimestamp = this.timestamp();
-        analytics.logEvent("form", {category: "plan", description: "Fill sign plan form", duration: signPlanTimestamp - this.signPlanStepperDialogTimestamp});
-        analytics.logEvent("sign", { category: "plan", action: "confirm", description: "Sign plan"});
+        let subscribePlanTimestamp = this.timestamp();
+        analytics.logEvent("form", {category: "plan", description: "Fill subscribe plan form", duration: subscribePlanTimestamp - this.subscribePlanStepperDialogTimestamp});
+        analytics.logEvent("subscribe", { category: "plan", action: "confirm", description: "Subscribe plan"});
         this.$store
-          .dispatch("signUserToPlan", {
+          .dispatch("subscribeUserToPlan", {
             plan: this.plan,
             phone: {
               areaCode: this.phone.replace(/ /g,'').substr(0, 2),
@@ -555,7 +555,7 @@ export default {
               }
             }
           }).then(() => {
-            analytics.logEvent("signed", { category: "plan", description: "Sign plan", duration: this.timestamp() - signPlanTimestamp});
+            analytics.logEvent("subscribed", { category: "plan", description: "Subscribe plan", duration: this.timestamp() - subscribePlanTimestamp});
           })
       }
     }

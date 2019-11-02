@@ -275,7 +275,7 @@ function getFreePlan() {
     });
 }
 
-function getUserOperationsByDatetimeRange(
+function getUserOperationsByDateRange(
   userId,
   startTimestamp,
   endTimestamp
@@ -581,7 +581,7 @@ function setUserPagseguroTransaction(userId, transaction, batch) {
   });
 }
 
-function pagseguroSignoutFromPlan(preApprovalCode) {
+function pagseguroUnsubscribeFromPlan(preApprovalCode) {
   return axios({
     method: 'PUT',
     url: env.providers.preApproval + '/' + preApprovalCode + '/cancel',
@@ -849,14 +849,14 @@ async function preApprovalNotificationHandler(notificationCode) {
       code: notification.preApproval.code._text,
       status: notification.preApproval.status._text.toLowerCase(),
       lastEventTimestamp: moment(notification.preApproval.lastEventDate._text).format("x"),
-      dateTime: reference.split('_')[2],
+      subscribeTimestamp: reference.split('_')[2],
       reference: reference
     };
     let userId = reference.split('_')[0];
     let planId = reference.split('_')[1];
 
     if (preApproval.status === 'payment_method_change') {
-      await pagseguroSignoutFromPlan(preApproval.code);
+      await pagseguroUnsubscribeFromPlan(preApproval.code);
       return notification;
     }
 
@@ -882,25 +882,25 @@ async function preApprovalNotificationHandler(notificationCode) {
         'expired'
       ].includes(preApproval.status)
     ) {
-      let cancelDatetime = moment().format('x');
+      let cancelTimestamp = moment().format('x');
       setUserPagseguroPlan(batch, userId, await getPlan(planId), {
         ...preApproval,
-        cancelDatetime: cancelDatetime
+        cancelTimestamp: cancelTimestamp
       });
       setUserPlanAndPreApproval(batch, userId, await getFreePlan(), {
         ...preApproval,
-        cancelDatetime: cancelDatetime
+        cancelTimestamp: cancelTimestamp
       });
     } else if (preApproval.status === 'suspended') {
-      let suspendDatetime = moment().format('x');
+      let suspendTimestamp = moment().format('x');
       let plan = await getPlan(planId);
       setUserPagseguroPlan(batch, userId, plan, {
         ...preApproval,
-        suspendDatetime: suspendDatetime
+        suspendTimestamp: suspendTimestamp
       });
       setUserPlanAndPreApproval(batch, userId, plan, {
         ...preApproval,
-        suspendDatetime: suspendDatetime
+        suspendTimestamp: suspendTimestamp
       });
     }
 
@@ -990,7 +990,7 @@ async function transactionNotificationHandler(notificationCode) {
       let userPagseguroPlan = await getUserPagseguroPlan(
         transactionPlanReference
       );
-      pagseguroSignoutFromPlan(userPagseguroPlan.preApproval.code);
+      pagseguroUnsubscribeFromPlan(userPagseguroPlan.preApproval.code);
       return notification;
     }
 
@@ -1294,7 +1294,7 @@ exports.generateOperationsTextFile = functions.https.onCall(
           .format('x')
       );
 
-      let operations = await getUserOperationsByDatetimeRange(
+      let operations = await getUserOperationsByDateRange(
         userId,
         startTimestamp,
         endTimestamp
@@ -1310,14 +1310,14 @@ exports.generateOperationsTextFile = functions.https.onCall(
 async function createPagseguroRecurrency(
   plan,
   user,
-  signDatetime,
+  subscribeTimestamp,
   data,
   cardToken,
   cardHolder
 ) {
-  let sign = {
+  let subscribe = {
     plan: plan.id,
-    reference: user.id + '_' + plan.id + '_' + signDatetime,
+    reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
     sender: {
       name: user.name,
       email: user.email,
@@ -1351,7 +1351,7 @@ async function createPagseguroRecurrency(
           name: cardHolder.name,
           birthDate:
             cardHolder.birthDate ||
-            moment(user.birthday).format('DD/MM/YYYY'),
+            moment(Number(user.birthday)).format('DD/MM/YYYY'),
           documents: [
             {
               type: 'CPF',
@@ -1378,7 +1378,7 @@ async function createPagseguroRecurrency(
       accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
       'content-type': 'application/json'
     },
-    data: sign
+    data: subscribe
   });
 
   return preApproval.data.code;
@@ -1387,7 +1387,7 @@ async function createPagseguroRecurrency(
 async function createPagseguroCheckout(
   plan,
   user,
-  signDatetime,
+  subscribeTimestamp,
   data,
   cardToken,
   cardHolder
@@ -1405,7 +1405,7 @@ async function createPagseguroCheckout(
       mode: 'default',
       method: 'creditcard',
       currency: 'BRL',
-      reference: user.id + '_' + plan.id + '_' + signDatetime,
+      reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
       sender: {
         name: user.name,
         email: user.email,
@@ -1446,7 +1446,7 @@ async function createPagseguroCheckout(
               value: cardHolder.cpf || user.cpf,
               birthDate:
                 cardHolder.birthDate ||
-                moment(user.birthday).format('DD/MM/YYYY')
+                moment(Number(user.birthday)).format('DD/MM/YYYY')
             }
           },
           phone: {
@@ -1484,7 +1484,7 @@ async function createPagseguroCheckout(
   return checkout.data.code;
 }
 
-exports.signUserToPlan = functions.https.onCall((data, context) => {
+exports.subscribeUserToPlan = functions.https.onCall((data, context) => {
   try {
     let userId = userAuthenthication(context.auth);
 
@@ -1524,13 +1524,13 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
 
         let cardHolder = data.cardHolder;
 
-        let signDatetime = moment().format('x');
+        let subscribeTimestamp = moment().format('x');
 
         return plan.period === 'yearly'
           ? createPagseguroCheckout(
               plan,
               user,
-              signDatetime,
+              subscribeTimestamp,
               data,
               cardToken,
               cardHolder
@@ -1538,7 +1538,7 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
           : createPagseguroRecurrency(
               plan,
               user,
-              signDatetime,
+              subscribeTimestamp,
               data,
               cardToken,
               cardHolder
@@ -1552,7 +1552,7 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
   }
 });
 
-exports.signoutUserFromPlan = functions.https.onCall(async (data, context) => {
+exports.unsubscribeUserFromPlan = functions.https.onCall(async (data, context) => {
   try {
     let userId = userAuthenthication(context.auth);
 
@@ -1635,7 +1635,7 @@ exports.signUserUp = functions.https.onCall(async (data) => {
   }
 });
 
-exports.validateUserPlanOnLogin = functions.https.onCall(
+exports.checkUserPlanValidDate = functions.https.onCall(
   async (data, context) => {
     try {
       let userId = userAuthenthication(context.auth);
@@ -1644,11 +1644,11 @@ exports.validateUserPlanOnLogin = functions.https.onCall(
 
       if (
         user.preApproval.status === 'suspended' &&
-        moment(user.preApproval.lastEventTimestamp)
+        Number(moment(Number(user.preApproval.lastEventTimestamp))
           .add(1, 'M')
-          .format('x') < moment().format('x')
+          .format('x')) < Number(moment().format('x'))
       ) {
-        return pagseguroSignoutFromPlan(user.preApproval.code);
+        await pagseguroUnsubscribeFromPlan(user.preApproval.code);
       }
 
       return true;

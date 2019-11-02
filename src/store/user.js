@@ -79,7 +79,7 @@ export default {
     },
     fetchUserData({ commit, getters }, payload) {
       commit('setLoading', true);
-      functions.httpsCallable('validateUserPlanOnLogin')();
+      functions.httpsCallable('checkUserPlanValidDate')();
       let promises = [];
       this.unsubscribeUserListener = db
         .collection('users')

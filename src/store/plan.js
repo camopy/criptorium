@@ -5,14 +5,14 @@ import { analytics } from "@/main";
 export default {
   state: {
     paidPlans: [],
-    signingUserToPagseguroPlan: false
+    subscribingUserToPagseguroPlan: false
   },
   mutations: {
     setPaidPlans(state, payload) {
       state.paidPlans = payload;
     },
-    setSigningUserToPagseguroPlan(state, payload) {
-      state.signingUserToPagseguroPlan = payload;
+    setSubscribingUserToPagseguroPlan(state, payload) {
+      state.subscribingUserToPagseguroPlan = payload;
     }
   },
   actions: {
@@ -36,8 +36,8 @@ export default {
           }
         );
     },
-    signUserToPlan({ commit, getters }, payload) {
-      commit('setSigningUserToPagseguroPlan', true);
+    subscribeUserToPlan({ commit, getters }, payload) {
+      commit('setSubscribingUserToPagseguroPlan', true);
       let params = {
         userId: getters.user.id,
         ...payload
@@ -50,13 +50,13 @@ export default {
             throw new Error("Falha ao comunicar com o PagSeguro");
           }
 
-          await functions.httpsCallable("signUserToPlan")({ ...params, senderHash: response.senderHash });
+          await functions.httpsCallable("subscribeUserToPlan")({ ...params, senderHash: response.senderHash });
 
           commit('setSnackbarContent', {
             type: "success",
             message: "Assinatura enviada para análise de pagamento junto ao PagSeguro"
           });
-          commit('setSigningUserToPagseguroPlan', false);
+          commit('setSubscribingUserToPagseguroPlan', false);
           return true;
         }
         catch (error) {
@@ -65,16 +65,16 @@ export default {
             type: 'error',
             message: error.message
           });
-          commit('setSigningUserToPagseguroPlan', false);
-          analytics.logEvent("error", { side: "client", category: "plan", action: "sign", error: error});
+          commit('setSubscribingUserToPagseguroPlan', false);
+          analytics.logEvent("error", { side: "client", category: "plan", action: "subscribe", error: error});
         }
       });
     },
-    async signoutUserFromPlan({ commit }) {
+    async unsubscribeUserFromPlan({ commit }) {
       commit('setUpdating', true);
 
       try {
-        await functions.httpsCallable('signoutUserFromPlan')();
+        await functions.httpsCallable('unsubscribeUserFromPlan')();
 
         commit('setSnackbarContent', {
           type: "success",
@@ -119,8 +119,8 @@ export default {
     paidPlans(state) {
       return state.paidPlans;
     },
-    signingUserToPagseguroPlan(state) {
-      return state.signingUserToPagseguroPlan;
+    subscribingUserToPagseguroPlan(state) {
+      return state.subscribingUserToPagseguroPlan;
     }
   }
 };
