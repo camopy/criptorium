@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="800px">
+  <v-dialog v-model="dialog" :persistent="subscribingUserToPagseguroPlan" width="800px">
     <v-overlay :value="plans.length == 0">
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>

@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="unset">
+  <v-dialog v-model="dialog" :persistent="updating" width="unset">
     <v-card v-if="user">
       <v-card-title class="grey lighten-4 py-4 title">Reativar assinatura</v-card-title>
       <v-flex xs12>
@@ -19,7 +19,7 @@
           :disabled="updating"
           color="primary"
           :loading="updating"
-          @click="onCancelPlan"
+          @click="onReactivatePlan"
         >
           Reativar
         </v-btn>
@@ -60,7 +60,7 @@ export default {
   },
 
   methods: {
-    onCancelPlan() {
+    onReactivatePlan() {
       let reactivatePlanTimestamp = this.timestamp();
       analytics.logEvent("resubscribe", { category: "plan", action: "confirm", description: "Confirm reactivate plan"});
       this.$store

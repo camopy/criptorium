@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="unset">
+  <v-dialog v-model="dialog" :persistent="updating" width="unset">
     <v-card v-if="user">
       <v-card-title class="grey lighten-4 py-4 title">Cancelar assinatura</v-card-title>
       <v-flex xs12>
