@@ -47,7 +47,6 @@
               <v-spacer></v-spacer>
               <v-btn text color="secondary" @click="onSignUp">Cadastrar</v-btn>
               <v-btn
-                text
                 :disabled="!valid || loading"
                 :loading="loading"
                 color="primary"

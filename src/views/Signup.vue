@@ -117,7 +117,6 @@
               <v-card-actions>
                 <v-spacer></v-spacer>
                 <v-btn
-                  text
                   :disabled="!valid || creating"
                   :loading="creating"
                   @click="onSignUp"
