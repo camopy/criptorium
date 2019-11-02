@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="800px">
+  <v-dialog v-model="dialog" width="unset">
     <v-card>
       <v-card-title class="grey lighten-4 py-4 title">Cadastrar operação</v-card-title>
       <v-flex xs12>
@@ -197,7 +197,6 @@
         <v-spacer></v-spacer>
         <v-btn text :disabled="creating" color="error" @click="dialog = ''">Cancelar</v-btn>
         <v-btn
-          text
           :disabled="!valid || creating"
           color="primary"
           :loading="creating"

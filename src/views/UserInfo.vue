@@ -20,8 +20,8 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn v-if="user.preApproval.status === 'suspended'" @click="reactivatePlanDialog = !reactivatePlanDialog">Reativar</v-btn>
-                  <v-btn v-else-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
+                  <v-btn v-if="user.preApproval.status === 'suspended'" @click="onReactivatePlan">Reativar</v-btn>
+                  <v-btn text color="error" v-else-if="user.plan.type === 'paid'" @click="onCancelPlan">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
                   <div
@@ -57,6 +57,7 @@
 import Date from "@/mixins/Date";
 import CancelPlanDialog from "@/components/plan/CancelPlanDialog";
 import ReactivatePlanDialog from "@/components/plan/ReactivatePlanDialog";
+import { analytics } from "@/main"
 
 export default {
   mixins: [Date],
@@ -78,6 +79,16 @@ export default {
     planDateLimit() {
       let lastEventTimestamp = this.$store.getters.user.preApproval.lastEventTimestamp;
       return this.formatDate(this.moment(lastEventTimestamp).add(1, "M").format("x"));
+    }
+  },
+  methods: {
+    onReactivatePlan() {
+      analytics.logEvent("resubscribe", { category: "plan", action: "click", description: "Click on reactivate plan" });
+      this.reactivatePlanDialog = !this.reactivatePlanDialog
+    },
+    onCancelPlan() {
+      analytics.logEvent("unsubscribe", { category: "plan", action: "click", description: "Click on cancel plan" });
+      this.cancelPlanDialog = !this.cancelPlanDialog
     }
   }
 };

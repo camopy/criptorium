@@ -8,7 +8,7 @@
               <v-btn
                 dark
                 small
-                color="green"
+                color="secondary"
                 @click="generateOperationsTextFileDialog = !generateOperationsTextFileDialog"
               >Gerar TXT</v-btn>
               <v-spacer></v-spacer>
@@ -51,21 +51,31 @@
           <v-expansion-panels inset multiple>
             <v-expansion-panel v-for="operation in user.operations" :key="operation.id">
               <v-expansion-panel-header>
-                <v-layout row>
-                  <v-flex xs6 sm2>{{formatDate(operation.time, "x")}}</v-flex>
-                  <v-flex xs6 sm2>{{operation.exchangeName}}</v-flex>
+                <v-layout row align-center>
+                  <v-flex xs6 sm2><span class="operationDate">{{formatDate(operation.time, "x")}}</span></v-flex>
+                  <v-flex xs6 sm3><span>{{operation.exchangeName}}</span></v-flex>
                   <v-flex
                     xs6
                     sm2
-                  >{{operation.type === "trade" ? "Trade" : (operation.type === "whitdraw" ? 'Saque' : 'Depósito')}}</v-flex>
-                  <v-flex xs6 sm2>{{operation.symbol}}</v-flex>
+                  ><span>{{operation.type === "trade" ? "Trade" : (operation.type === "whitdraw" ? 'Saque' : 'Depósito')}}</span></v-flex>
+                  <v-flex xs6 sm2><span class="symbol">{{operation.symbol}}</span></v-flex>
                   <v-flex
                     xs6
-                    sm2
-                  >{{operation.isBuyer === undefined ? "" : (operation.isBuyer === true ? 'Compra' : 'Venda')}}</v-flex>
+                    sm3
+                    v-if="operation.isBuyer === true"
+                  ><span class="buyOperation">Compra</span></v-flex>
+                  <v-flex
+                    xs6
+                    sm3
+                    v-else-if="operation.isBuyer === false"
+                  ><span class="sellOperation">Venda</span></v-flex>
+                  <!-- <v-flex
+                    xs6
+                    sm3
+                  ><span class="operationBuyer">{{operation.isBuyer === undefined ? "" : (operation.isBuyer === true ? 'Compra' : 'Venda')}}</span></v-flex> -->
                 </v-layout>
               </v-expansion-panel-header>
-              <v-expansion-panel-content>
+              <v-expansion-panel-content class="operationDetails">
                 <v-layout v-if="operation.type==='trade'" row>
                   <v-flex xs6>Criptoativo: {{operation.baseAsset}}</v-flex>
                   <v-flex xs6>Quantidade: {{Number(operation.qty).toFixed(8)}}</v-flex>
@@ -206,3 +216,23 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.operationDate {
+  /* font-weight: bold; */
+  font-size: 16px;
+}
+.symbol {
+  /* font-weight: bold; */
+  font-size: 17px;
+}
+.buyOperation {
+  color: var(--v-secondary-base);
+}
+.sellOperation {
+  color: var(--v-error-base);
+}
+.operationDetails {
+  color: var(--v-text-base);
+}
+</style>

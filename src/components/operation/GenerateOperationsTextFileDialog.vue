@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" width="300px">
+  <v-dialog v-model="dialog" width="unset">
     <v-card>
       <v-card-title class="grey lighten-4 py-4 title">Gerar arquivo TXT</v-card-title>
       <v-flex xs12>
@@ -49,7 +49,6 @@
         <v-spacer></v-spacer>
         <v-btn text :disabled="creating" color="error" @click="dialog = false">Cancelar</v-btn>
         <v-btn
-          text
           :disabled="!valid || creating"
           color="primary"
           :loading="creating"

@@ -7,15 +7,13 @@
       v-layout(v-if="user" row wrap)
         v-flex(xs12)
           v-card(v-for="exchange in user.exchanges" :key="exchange.id" class="mb-2")
-            v-container(fluid)
-              v-layout(row)
-                v-flex(xs7 sm8 md9)
-                  v-card-title(primary-title)
+                  v-card-title
                     div
-                      h2(class="mb-0") {{ exchange.name }}
-                      span Última sincronização: {{ formatDate(exchange.lastSync, "x") }}
+                      div {{ exchange.name }}
+                      span(v-if="exchange.lastSync" class="lastSync") Última sincronização: {{ formatDate(exchange.lastSync, "x") }}
+                  v-card-actions
                     v-spacer
-                    v-btn(text @click="onSync(exchange)" :loading="creating") Sincronizar
+                    v-btn(text color="secondary" @click="onSync(exchange)" :loading="creating") Sincronizar
 </template>
 
 <script>
@@ -42,7 +40,7 @@ export default {
         category: "exchange",
         action: "click",
         description: "Sync exchange operations",
-        exchange: exchange.id
+        exchange: exchange.systemExchange
       });
       return this.$store
         .dispatch("syncExchangeOperations", exchange)
@@ -59,3 +57,10 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.lastSync {
+  color: gray;
+  font-size: 18px;
+}
+</style>
