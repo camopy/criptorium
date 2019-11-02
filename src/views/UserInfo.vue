@@ -20,13 +20,15 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn v-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
+                  <v-btn v-if="user.preApproval.status === 'suspended'" @click="reactivatePlanDialog = !reactivatePlanDialog">Reativar</v-btn>
+                  <v-btn v-else-if="user.plan.type === 'paid'" @click="cancelPlanDialog = !cancelPlanDialog">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
                   <div
                     class="text--primary"
                   >Plano {{user.plan.name}}{{user.plan.type === "free" ? "" : user.plan.period === "yearly" ? " - Anual" : " - Mensal"}}</div>
                   <div v-if="user.plan.type === 'paid'">R${{user.plan.period === "monthly" ? user.plan.price : user.plan.price/12}}/mês</div>
+                  <div v-if="user.preApproval.status === 'suspended'">Sua assinatura vale até {{planDateLimit}}</div>
                 </v-flex>
                 <v-flex xs12>
                   <v-divider class="my-3"></v-divider>
@@ -47,20 +49,24 @@
       </v-flex>
     </v-layout>
     <CancelPlanDialog :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
+    <ReactivatePlanDialog :visible="reactivatePlanDialog" @close="reactivatePlanDialog = false"/>
   </v-container>
 </template>
 
 <script>
 import Date from "@/mixins/Date";
 import CancelPlanDialog from "@/components/plan/CancelPlanDialog";
+import ReactivatePlanDialog from "@/components/plan/ReactivatePlanDialog";
 
 export default {
   mixins: [Date],
   components: {
     CancelPlanDialog,
+    ReactivatePlanDialog
   },
   data: () => ({
-    cancelPlanDialog: false
+    cancelPlanDialog: false,
+    reactivatePlanDialog: false
   }),
   computed: {
     user() {
@@ -68,6 +74,10 @@ export default {
     },
     birthday() {
       return this.formatDate(this.$store.getters.user.birthday);
+    },
+    planDateLimit() {
+      let lastEventTimestamp = this.$store.getters.user.preApproval.lastEventTimestamp;
+      return this.formatDate(this.moment(lastEventTimestamp).add(1, "M").format("x"));
     }
   }
 };

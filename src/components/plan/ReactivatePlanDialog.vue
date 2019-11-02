@@ -1,13 +1,13 @@
 <template>
   <v-dialog v-model="dialog" width="unset">
-    <v-card v-if="user">
-      <v-card-title class="grey lighten-4 py-4 title">Cancelar assinatura</v-card-title>
+    <v-card>
+      <v-card-title class="grey lighten-4 py-4 title">Reativar assinatura</v-card-title>
       <v-flex xs12>
         <v-container grid-list-sm class="pa-4">
             <v-layout row wrap>
               <v-flex xs12>
-                <div>Você tem certeza que quer cancelar sua assinatura?</div>
-                <div>Você terá acesso as funcionalidades do seu plano até {{this.formatDate(planDateLimit)}}</div>
+                <div>Você tem certeza que quer reativar sua assinatura?</div>
+                <div>A cobrança recorrente de R${{user.plan.price}} será reativada na próxima data de cobrança.</div>
               </v-flex>
             </v-layout>
         </v-container>
@@ -21,7 +21,7 @@
           :loading="updating"
           @click="onCancelPlan"
         >
-          Cancelar
+          Reativar
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -61,12 +61,14 @@ export default {
 
   methods: {
     onCancelPlan() {
-      let cancelPlanTimestamp = this.timestamp();
-      analytics.logEvent("cancel", { category: "plan", action: "confirm", description: "Confirm cancel plan"});
+      let reactivatePlanTimestamp = this.timestamp();
+      analytics.logEvent("resubscribe", { category: "plan", action: "confirm", description: "Confirm reactivate plan"});
       this.$store
-        .dispatch("signoutUserFromPlan")
+        .dispatch("resubscribeUserToPlan", {
+          userId: this.user.id
+        })
         .then(() => {
-          analytics.logEvent("cancel", { category: "plan", action: "cancel", description: "Cancel plan", duration: this.timestamp() - cancelPlanTimestamp});
+          analytics.logEvent("resubscribe", { category: "plan", action: "resubscribe", description: "Reactivate plan", duration: this.timestamp() - reactivatePlanTimestamp});
           this.dialog = false;
         });
     }

@@ -172,7 +172,7 @@ function getUserExchangeLastTrades(userId, exchangeId) {
     .collection('exchanges')
     .doc(exchangeId)
     .collection('lastOperations')
-    .doc("trade")
+    .doc('trade')
     .get()
     .then((tradesDoc) => {
       return {
@@ -189,10 +189,10 @@ function getUserExchangeLastWhitdraw(userId, exchangeId) {
     .collection('exchanges')
     .doc(exchangeId)
     .collection('lastOperations')
-    .doc("whitdraw")
+    .doc('whitdraw')
     .get()
     .then((whitdrawDoc) => {
-      if(!whitdrawDoc.data()) {
+      if (!whitdrawDoc.data()) {
         return false;
       }
       return {
@@ -210,10 +210,10 @@ function getUserExchangeLastDeposit(userId, exchangeId) {
     .collection('exchanges')
     .doc(exchangeId)
     .collection('lastOperations')
-    .doc("deposit")
+    .doc('deposit')
     .get()
     .then((depositDoc) => {
-      if(!depositDoc.data()) {
+      if (!depositDoc.data()) {
         return false;
       }
       return {
@@ -454,16 +454,24 @@ function setUserPlanAndPreApproval(batch, userId, plan, preApproval) {
     .collection('users')
     .doc(userId);
 
-  return batch.update(userDoc, { plan: plan, preApproval: preApproval });
+  return batch.update(
+    userDoc,
+    { plan: plan, preApproval: preApproval },
+    { merge: true }
+  );
 }
 
-function setUserPlan(batch, userId, plan) {
+function setUserPlan(userId, plan, batch) {
   let userDoc = admin
     .firestore()
     .collection('users')
     .doc(userId);
 
-  return batch.update(userDoc, { plan: plan });
+  if (batch) {
+    return batch.update(userDoc, { plan: plan });
+  }
+
+  userDoc.update({ plan: plan });
 }
 
 function setUserOperation(userId, operation, batch) {
@@ -481,11 +489,18 @@ function setUserOperation(userId, operation, batch) {
   return batch.set(operationDoc, operation);
 }
 
-function setUserExchangeLastTradeBySymbol(userId, exchangeId, symbolObj, batch) {
+function setUserExchangeLastTradeBySymbol(
+  userId,
+  exchangeId,
+  symbolObj,
+  batch
+) {
   let trade = admin
     .firestore()
-    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
-    .doc("trade");
+    .collection(
+      'users/' + userId + '/exchanges/' + exchangeId + '/lastOperations/'
+    )
+    .doc('trade');
 
   if (!batch) {
     return trade.update(symbolObj, { merge: true });
@@ -497,8 +512,10 @@ function setUserExchangeLastTradeBySymbol(userId, exchangeId, symbolObj, batch) 
 function setUserExchangeLastDeposit(userId, exchangeId, depositObj, batch) {
   let deposit = admin
     .firestore()
-    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
-    .doc("deposit");
+    .collection(
+      'users/' + userId + '/exchanges/' + exchangeId + '/lastOperations/'
+    )
+    .doc('deposit');
 
   if (!batch) {
     return deposit.update(depositObj, { merge: true });
@@ -510,8 +527,10 @@ function setUserExchangeLastDeposit(userId, exchangeId, depositObj, batch) {
 function setUserExchangeLastWhitdraw(userId, exchangeId, whitdrawObj, batch) {
   let whitdraw = admin
     .firestore()
-    .collection('users/' + userId + '/exchanges/' + exchangeId + "/lastOperations/")
-    .doc("whitdraw");
+    .collection(
+      'users/' + userId + '/exchanges/' + exchangeId + '/lastOperations/'
+    )
+    .doc('whitdraw');
 
   if (!batch) {
     return whitdraw.set(whitdrawObj, { merge: true });
@@ -574,6 +593,38 @@ function pagseguroSignoutFromPlan(preApprovalCode) {
       accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
       'content-type': 'application/json'
     }
+  });
+}
+
+function pagseguroSuspendFromPlan(preApprovalCode) {
+  return axios({
+    method: 'PUT',
+    url: env.providers.preApproval + '/' + preApprovalCode + '/status',
+    params: {
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
+    },
+    headers: {
+      accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
+      'content-type': 'application/json'
+    },
+    data: { status: 'SUSPENDED' }
+  });
+}
+
+function pagseguroResubscribeToPlan(preApprovalCode) {
+  return axios({
+    method: 'PUT',
+    url: env.providers.preApproval + '/' + preApprovalCode + '/status',
+    params: {
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
+    },
+    headers: {
+      accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
+      'content-type': 'application/json'
+    },
+    data: { status: 'ACTIVE' }
   });
 }
 
@@ -797,6 +848,7 @@ async function preApprovalNotificationHandler(notificationCode) {
     let preApproval = {
       code: notification.preApproval.code._text,
       status: notification.preApproval.status._text.toLowerCase(),
+      lastEventTimestamp: moment(notification.preApproval.lastEventDate._text).format("x"),
       dateTime: reference.split('_')[2],
       reference: reference
     };
@@ -841,11 +893,12 @@ async function preApprovalNotificationHandler(notificationCode) {
       });
     } else if (preApproval.status === 'suspended') {
       let suspendDatetime = moment().format('x');
-      setUserPagseguroPlan(batch, userId, await getPlan(planId), {
+      let plan = await getPlan(planId);
+      setUserPagseguroPlan(batch, userId, plan, {
         ...preApproval,
         suspendDatetime: suspendDatetime
       });
-      setUserPlanAndPreApproval(batch, userId, await getFreePlan(), {
+      setUserPlanAndPreApproval(batch, userId, plan, {
         ...preApproval,
         suspendDatetime: suspendDatetime
       });
@@ -944,11 +997,11 @@ async function transactionNotificationHandler(notificationCode) {
     const batch = admin.firestore().batch();
     setUserPagseguroTransaction(userId, transaction, batch);
     setUserPlan(
-      batch,
       userId,
       status.planStatus === 'active'
         ? await getPlan(planId)
-        : await getFreePlan()
+        : await getFreePlan(),
+      batch
     );
 
     return batch.commit().then(() => {
@@ -959,12 +1012,7 @@ async function transactionNotificationHandler(notificationCode) {
   }
 }
 
-async function syncBinanceTrades(
-  client,
-  userId,
-  systemExchange,
-  userExchange
-) {
+async function syncBinanceTrades(client, userId, systemExchange, userExchange) {
   const timeoutPromises = [];
 
   const promise = [];
@@ -1178,11 +1226,7 @@ async function syncBinanceWhitdraws(
   return batch.commit();
 }
 
-async function syncBinanceOperations(
-  userId,
-  userExchange,
-  systemExchange
-) {
+async function syncBinanceOperations(userId, userExchange, systemExchange) {
   try {
     const client = Binance({
       apiKey: userExchange.apiKey,
@@ -1198,12 +1242,7 @@ async function syncBinanceOperations(
       syncBinanceDeposits(client, userId, systemExchange, userExchange)
     );
     promises.push(
-      syncBinanceWhitdraws(
-        client,
-        userId,
-        systemExchange,
-        userExchange
-      )
+      syncBinanceWhitdraws(client, userId, systemExchange, userExchange)
     );
     promises.push(
       updateUserExchange(userId, userExchange.id, {
@@ -1237,11 +1276,7 @@ exports.syncExchangeOperations = functions
 
       switch (systemExchange.id) {
         case 'binance':
-          return syncBinanceOperations(
-            user.id,
-            userExchange,
-            systemExchange
-          );
+          return syncBinanceOperations(user.id, userExchange, systemExchange);
       }
     } catch (error) {
       return errorHandler(error);
@@ -1271,6 +1306,183 @@ exports.generateOperationsTextFile = functions.https.onCall(
     }
   }
 );
+
+async function createPagseguroRecurrency(
+  plan,
+  user,
+  signDatetime,
+  data,
+  cardToken,
+  cardHolder
+) {
+  let sign = {
+    plan: plan.id,
+    reference: user.id + '_' + plan.id + '_' + signDatetime,
+    sender: {
+      name: user.name,
+      email: user.email,
+      hash: data.senderHash,
+      phone: {
+        areaCode: data.phone.areaCode || user.phone.areaCode,
+        number: data.phone.number || user.phone.number
+      },
+      address: {
+        street: data.address.street || user.address.street,
+        number: data.address.number || user.address.number,
+        complement: data.address.complement || user.address.complement,
+        district: data.address.district || user.address.district,
+        city: data.address.city || user.address.city,
+        state: data.address.state || user.address.state,
+        country: 'BRA',
+        postalCode: data.address.postalCode || user.address.postalCode
+      },
+      documents: [
+        {
+          type: 'CPF',
+          value: user.cpf
+        }
+      ]
+    },
+    paymentMethod: {
+      type: 'CREDITCARD',
+      creditCard: {
+        token: cardToken,
+        holder: {
+          name: cardHolder.name,
+          birthDate:
+            cardHolder.birthDate ||
+            moment(user.birthday).format('DD/MM/YYYY'),
+          documents: [
+            {
+              type: 'CPF',
+              value: cardHolder.cpf || user.cpf
+            }
+          ],
+          phone: {
+            areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
+            number: cardHolder.phone.number || user.phone.number
+          }
+        }
+      }
+    }
+  };
+
+  let preApproval = await axios({
+    method: 'POST',
+    url: env.providers.preApproval,
+    params: {
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
+    },
+    headers: {
+      accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
+      'content-type': 'application/json'
+    },
+    data: sign
+  });
+
+  return preApproval.data.code;
+}
+
+async function createPagseguroCheckout(
+  plan,
+  user,
+  signDatetime,
+  data,
+  cardToken,
+  cardHolder
+) {
+  console.log('Card token', cardToken);
+  let payment = {
+    _declaration: {
+      _attributes: {
+        version: '1.0',
+        encoding: 'ISO-8859-1',
+        standalone: 'yes'
+      }
+    },
+    payment: {
+      mode: 'default',
+      method: 'creditcard',
+      currency: 'BRL',
+      reference: user.id + '_' + plan.id + '_' + signDatetime,
+      sender: {
+        name: user.name,
+        email: user.email,
+        hash: data.senderHash,
+        phone: {
+          areaCode: data.phone.areaCode || user.phone.areaCode,
+          number: data.phone.number || user.phone.number
+        },
+        documents: {
+          document: {
+            type: 'CPF',
+            value: user.cpf
+          }
+        }
+      },
+      items: {
+        item: {
+          id: '1',
+          description: 'Teste',
+          quantity: 1,
+          amount: '165.00'
+        }
+      },
+      shipping: {
+        addressRequired: false
+      },
+      creditCard: {
+        token: cardToken,
+        installment: {
+          quantity: 12,
+          value: '10.00'
+        },
+        holder: {
+          name: cardHolder.name,
+          documents: {
+            document: {
+              type: 'CPF',
+              value: cardHolder.cpf || user.cpf,
+              birthDate:
+                cardHolder.birthDate ||
+                moment(user.birthday).format('DD/MM/YYYY')
+            }
+          },
+          phone: {
+            areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
+            number: cardHolder.phone.number || user.phone.number
+          }
+        },
+        billingAddress: {
+          street: data.address.street || user.address.street,
+          number: data.address.number || user.address.number,
+          complement: data.address.complement || user.address.complement,
+          district: data.address.district || user.address.district,
+          city: data.address.city || user.address.city,
+          state: data.address.state || user.address.state,
+          country: 'BRA',
+          postalCode: data.address.postalCode || user.address.postalCode
+        }
+      }
+    }
+  };
+
+  let checkout = await axios({
+    method: 'POST',
+    url: env.providers.checkoutTransaction,
+    params: {
+      email: pagseguroAuth.email,
+      token: pagseguroAuth.token
+    },
+    headers: {
+      'Content-Type': 'application/xml;charset=ISO-8859-1'
+    },
+    data: xmlParser.js2xml(payment, { compact: true })
+  });
+
+  return checkout.data.code;
+}
 
 exports.signUserToPlan = functions.https.onCall((data, context) => {
   try {
@@ -1313,74 +1525,24 @@ exports.signUserToPlan = functions.https.onCall((data, context) => {
         let cardHolder = data.cardHolder;
 
         let signDatetime = moment().format('x');
-        let sign = {
-          plan: plan.id,
-          reference: user.id + '_' + plan.id + '_' + signDatetime,
-          sender: {
-            name: user.name,
-            email: user.email,
-            hash: data.senderHash,
-            phone: {
-              areaCode: data.phone.areaCode || user.phone.areaCode,
-              number: data.phone.number || user.phone.number
-            },
-            address: {
-              street: data.address.street || user.address.street,
-              number: data.address.number || user.address.number,
-              complement: data.address.complement || user.address.complement,
-              district: data.address.district || user.address.district,
-              city: data.address.city || user.address.city,
-              state: data.address.state || user.address.state,
-              country: 'BRA',
-              postalCode: data.address.postalCode || user.address.postalCode
-            },
-            documents: [
-              {
-                type: 'CPF',
-                value: user.cpf
-              }
-            ]
-          },
-          paymentMethod: {
-            type: 'CREDITCARD',
-            creditCard: {
-              token: cardToken,
-              holder: {
-                name: cardHolder.name,
-                birthDate:
-                  cardHolder.birthDate ||
-                  moment(user.birthday, 'YYYY-MM-DD').format('DD/MM/YYYY'),
-                documents: [
-                  {
-                    type: 'CPF',
-                    value: cardHolder.cpf || user.cpf
-                  }
-                ],
-                phone: {
-                  areaCode: cardHolder.phone.areaCode || user.phone.areaCode,
-                  number: cardHolder.phone.number || user.phone.number
-                }
-              }
-            }
-          }
-        };
 
-        let preApproval = await axios({
-          method: 'POST',
-          url: env.providers.preApproval,
-          params: {
-            email: pagseguroAuth.email,
-            token: pagseguroAuth.token
-          },
-          headers: {
-            accept:
-              'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
-            'content-type': 'application/json'
-          },
-          data: sign
-        });
-
-        return preApproval.data.code;
+        return plan.period === 'yearly'
+          ? createPagseguroCheckout(
+              plan,
+              user,
+              signDatetime,
+              data,
+              cardToken,
+              cardHolder
+            )
+          : createPagseguroRecurrency(
+              plan,
+              user,
+              signDatetime,
+              data,
+              cardToken,
+              cardHolder
+            );
       })
       .catch((error) => {
         return errorHandler(error);
@@ -1403,7 +1565,28 @@ exports.signoutUserFromPlan = functions.https.onCall(async (data, context) => {
       );
     }
 
-    await pagseguroSignoutFromPlan(user.preApproval.code);
+    await pagseguroSuspendFromPlan(user.preApproval.code);
+
+    return true;
+  } catch (error) {
+    return errorHandler(error);
+  }
+});
+
+exports.resubscribeUserToPlan = functions.https.onCall(async (data, context) => {
+  try {
+    let userId = userAuthenthication(context.auth);
+
+    let user = await getUser(userId);
+
+    if (user.preApproval.status !== 'suspended') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Operação não autorizada'
+      );
+    }
+
+    await pagseguroResubscribeToPlan(user.preApproval.code);
 
     return true;
   } catch (error) {
@@ -1440,7 +1623,7 @@ exports.signUserUp = functions.https.onCall(async (data) => {
       name: data.name,
       email: data.email,
       cpf: data.cpf.replace(/\D/g, ''),
-      birthday: moment(data.birthday, "YYYY-MM-DD").format("x"),
+      birthday: moment(data.birthday, 'YYYY-MM-DD').format('x'),
       dateCreated: moment().format('x'),
       plan: freePlan
     };
@@ -1451,3 +1634,26 @@ exports.signUserUp = functions.https.onCall(async (data) => {
     return errorHandler(error);
   }
 });
+
+exports.validateUserPlanOnLogin = functions.https.onCall(
+  async (data, context) => {
+    try {
+      let userId = userAuthenthication(context.auth);
+
+      let user = await getUser(userId);
+
+      if (
+        user.preApproval.status === 'suspended' &&
+        moment(user.preApproval.lastEventTimestamp)
+          .add(1, 'M')
+          .format('x') < moment().format('x')
+      ) {
+        return pagseguroSignoutFromPlan(user.preApproval.code);
+      }
+
+      return true;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  }
+);

@@ -70,11 +70,11 @@ export default {
         }
       });
     },
-    async signoutUserFromPlan({ commit }, payload) {
+    async signoutUserFromPlan({ commit }) {
       commit('setUpdating', true);
 
       try {
-        await functions.httpsCallable('signoutUserFromPlan')(payload);
+        await functions.httpsCallable('signoutUserFromPlan')();
 
         commit('setSnackbarContent', {
           type: "success",
@@ -90,6 +90,28 @@ export default {
         });
         commit('setUpdating', false);
         analytics.logEvent("error", { side: "client", category: "plan", action: "cancel", error: error});
+      }
+    },
+    async resubscribeUserToPlan({ commit }) {
+      commit('setUpdating', true);
+
+      try {
+        await functions.httpsCallable('resubscribeUserToPlan')();
+
+        commit('setSnackbarContent', {
+          type: "success",
+          message: "Assinatura reativada"
+        });
+        commit('setUpdating', false);
+      }
+      catch (error) {
+        console.error(error);
+        commit('setSnackbarContent', {
+          type: 'error',
+          message: error.message
+        });
+        commit('setUpdating', false);
+        analytics.logEvent("error", { side: "client", category: "plan", action: "resubscribe", error: error});
       }
     }
   },

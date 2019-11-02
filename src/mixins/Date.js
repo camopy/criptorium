@@ -3,6 +3,10 @@ export default {
     formatDate(date, currentFormat) {
       if (!date) return null;
 
+      if(typeof(date) === "string") {
+        date = Number(date);
+      }
+
       if(currentFormat){
         return this.$moment(date, currentFormat).format("L");
       }
@@ -16,6 +20,15 @@ export default {
     },
     timestamp() {
       return this.$moment().format("x");
+    },
+    moment(date) {
+      if(date) {
+        if(typeof(date) === "string") {
+          date = Number(date);
+        }
+        return this.$moment(date);
+      }
+      return this.$moment();
     }
   }
 };
