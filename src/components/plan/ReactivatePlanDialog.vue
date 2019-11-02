@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="dialog" width="unset">
-    <v-card>
+    <v-card v-if="user">
       <v-card-title class="grey lighten-4 py-4 title">Reativar assinatura</v-card-title>
       <v-flex xs12>
         <v-container grid-list-sm class="pa-4">
