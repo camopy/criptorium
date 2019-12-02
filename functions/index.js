@@ -295,7 +295,7 @@ function getUserOperationsByDateRange(
       }
       return querySnapshot.docs.map(function(operation) {
         return formatOperation({ ...operation.data(), id: operation.id });
-      });
+      }).sort();
     });
 }
 
@@ -324,21 +324,20 @@ function tradeFormat(operation) {
       .replace('.', '')
       .substr(0, 20) +
     '|' +
-    (operation.isBuyer ? operation.quoteAsset : operation.baseAsset)
-      .substr(0, 10)
-      .toUpperCase() +
-    '|' +
     Number(operation.isBuyer ? operation.quoteQty : operation.qty)
       .toFixed(10)
       .replace('.', '')
       .substr(0, 20) +
     '|' +
+    (operation.isBuyer ? operation.quoteAsset : operation.baseAsset)
+      .substr(0, 10)
+      .toUpperCase() +
+    '|' +
     operation.exchangeName.substr(0, 60).toUpperCase() +
     '|' +
     operation.exchangeUrl.substr(0, 80).toUpperCase() +
     '|' +
-    operation.exchangeCountryCode.substr(0, 2).toUpperCase() +
-    'CRLF'
+    operation.exchangeCountryCode.substr(0, 2).toUpperCase()
   );
 }
 
@@ -356,10 +355,11 @@ function depositFormat(operation) {
     '|' +
     operation.exchangeName.substr(0, 60).toUpperCase() +
     '|' +
-    operation.exchangeUrl.substr(0, 80).toUpperCase() +
-    '|' +
-    operation.exchangeCountryCode.substr(0, 2).toUpperCase() +
-    'CRLF'
+    operation.exchangeUrl.substr(0, 80).toUpperCase()
+    //  +
+    // '|'
+    // +
+    // operation.exchangeCountryCode.substr(0, 2).toUpperCase()
   );
 }
 
@@ -379,8 +379,7 @@ function whitdrawFormat(operation) {
     '|' +
     operation.exchangeUrl.substr(0, 80).toUpperCase() +
     '|' +
-    operation.exchangeCountryCode.substr(0, 2).toUpperCase() +
-    'CRLF'
+    operation.exchangeCountryCode.substr(0, 2).toUpperCase()
   );
 }
 
