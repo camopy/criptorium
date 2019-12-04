@@ -37,10 +37,9 @@
                   <div class="display-1 text--primary">Detalhes do plano</div>
                 </v-flex>
                 <v-flex xs12 sm7>
-                  <div
-                    class="text--primary"
-                  >{{user.plan.name}} - {{user.plan.period === "yearly" ? "Anual" : "Mensal"}}</div>
-                  <div>R${{user.plan.price/12}}/mês</div>
+                  <div>Lançamento manual de operações</div>
+                  <div>Geração de arquivo TXT para a Receita Federal</div>
+                  <div v-if="user.plan.type === 'paid'">Sincronização de operações com exchanges</div>
                 </v-flex>
               </v-layout>
             </v-container>
