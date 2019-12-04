@@ -5,7 +5,7 @@
         <v-flex xs12 sm8 md4>
           <v-card class="elevation-12">
             <v-toolbar dark color="primary">
-              <v-toolbar-title>Cripto RF</v-toolbar-title>
+              <v-toolbar-title>Recupere sua senha</v-toolbar-title>
             </v-toolbar>
             <v-card-text>
               <v-container>
@@ -25,34 +25,18 @@
                       ></v-text-field>
                     </v-flex>
                   </v-layout>
-                  <v-layout row>
-                    <v-flex xs12>
-                      <v-text-field
-                        name="password"
-                        label="Senha"
-                        id="password"
-                        prepend-icon="fas fa-lock"
-                        v-model="password"
-                        type="password"
-                        :error-messages="passwordErrors"
-                        @input="$v.password.$touch()"
-                        @blur="$v.password.$touch()"
-                      ></v-text-field>
-                      <v-btn text color="text" to="/recoverPassword">Esqueci minha senha</v-btn>
-                    </v-flex>
-                  </v-layout>
                 </v-form>
               </v-container>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn text color="secondary" @click="onSignUp">Cadastrar</v-btn>
+              <v-btn text color="error" to="/signin">Cancelar</v-btn>
               <v-btn
                 :disabled="!valid || loading"
                 :loading="loading"
                 color="primary"
-                @click="onSignin"
-                >Entrar
+                @click="onRecoverPassword"
+                >Enviar
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -69,14 +53,11 @@ import { required, email } from 'vuelidate/lib/validators'
 export default {
   mixins: [validationMixin],
   validations: {
-    email: { required, email },
-    password: { required }
+    email: { required, email }
   },
   data: () => ({
     valid: true,
-    email: "",
-    password: "",
-    passwordRules: [v => !!v || "Digite sua senha"]
+    email: ""
   }),
   props: {
     source: String
@@ -97,12 +78,6 @@ export default {
       !this.$v.email.email && errors.push('Digite um email válido')
       !this.$v.email.required && errors.push('Email é obrigatório')
       return errors
-    },
-    passwordErrors() {
-      const errors = []
-      if (!this.$v.password.$dirty) return errors
-      !this.$v.password.required && errors.push('Senha é obrigatório')
-      return errors
     }
   },
   watch: {
@@ -117,12 +92,11 @@ export default {
       analytics.logEvent("signup", { action: "click", category: "singup"});
       this.$router.push("/signup");
     },
-    onSignin() {
+    onRecoverPassword() {
       if (this.$refs.form.validate()) {
-        analytics.logEvent("signin", { action: "confirm", category: "signin"});
-        this.$store.dispatch("signUserIn", {
-          email: this.email,
-          password: this.password
+        analytics.logEvent("recoverPassword", { action: "confirm", category: "password"});
+        this.$store.dispatch("recoverPassword", {
+          email: this.email
         });
       }
     }

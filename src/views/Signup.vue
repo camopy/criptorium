@@ -211,7 +211,8 @@ export default {
       return this.$store.getters.creating;
     },
     computedDateFormatted() {
-      return this.formatDate(this.birthday);
+      console.log(this.birthday);
+      return this.formatDate(this.birthday, "YYYY-MM-DD");
     }
   },
   watch: {

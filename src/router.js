@@ -3,6 +3,7 @@ import Router from 'vue-router'
 import Home from './views/Home.vue'
 import Signup from "./views/Signup.vue";
 import Signin from "./views/Signin.vue";
+import PasswordRecovery from "./views/PasswordRecovery.vue";
 import Exchanges from "./views/Exchanges.vue";
 import Operations from "./views/Operations.vue";
 import UserInfo from "./views/UserInfo.vue";
@@ -39,6 +40,11 @@ export default new Router({
       path: "/signin",
       name: "signin",
       component: Signin
+    },
+    {
+      path: "/recoverPassword",
+      name: "recoverPassword",
+      component: PasswordRecovery
     },
     {
       path: "/signup",

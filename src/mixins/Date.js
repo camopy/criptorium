@@ -3,7 +3,7 @@ export default {
     formatDate(date, currentFormat) {
       if (!date) return null;
 
-      if(typeof(date) === "string") {
+      if(typeof(date) === "string" && !date.includes("-")) {
         date = Number(date);
       }
 

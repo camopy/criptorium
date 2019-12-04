@@ -70,6 +70,29 @@ export default {
           analytics.logEvent("error", { side: "client", category: "signin", error: error});
         });
     },
+    async recoverPassword({ commit }, payload) {
+      commit('setLoading', true);
+      return firebase.auth().sendPasswordResetEmail(payload.email).then(() => {
+        commit('setLoading', false);
+        commit('setSnackbarContent', {
+          type: "success",
+          message: "Link de recuperação de senha enviado para o email informado"
+        });
+      })
+      .catch(error => {
+        console.error(error);
+        commit('setLoading', false);
+        let message = error.message;
+        if(error.code == "auth/user-not-found") {
+          message = "Email informado não está cadastrado no sistema"
+        }
+        commit('setSnackbarContent', {
+          type: 'error',
+          message: message
+        });
+        analytics.logEvent("error", { side: "client", category: "email", error: error});
+      });
+    },
     logout({ commit }) {
       this.unsubscribeUserListener();
       this.unsubscribeExchangesListener();
