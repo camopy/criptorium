@@ -6,7 +6,7 @@
           <v-flex xs12 sm8 md4>
             <v-card class="elevation-12">
               <v-toolbar dark color="primary">
-                <v-toolbar-title>Cripto RF - Cadastro</v-toolbar-title>
+                <v-toolbar-title>Criptorium - Cadastro</v-toolbar-title>
               </v-toolbar>
               <v-card-text>
                 <v-form v-model="valid" lazy-validation>

@@ -41,7 +41,7 @@
     <v-app-bar :clipped-left="$vuetify.breakpoint.lgAndUp" app color="primary" dark>
       <v-toolbar-title style="width: 300px" class="ml-0 pl-4">
         <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-        <span class="hidden-sm-and-down">Cripto RF</span>
+        <span class="hidden-sm-and-down">Criptorium</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn v-if="user && user.plan.type === 'free'" color="secondary" @click="onUpgradeAccount">Upgrade</v-btn>

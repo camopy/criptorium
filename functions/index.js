@@ -8,6 +8,7 @@ const axios = require('axios');
 const conf = require('./env');
 const env = functions.config().env.id == 'prod' ? conf.producao : conf.sandbox;
 const pagseguroAuth = functions.config().pagseguro.auth;
+const nodemailer = require('nodemailer');
 const runtimeOpts = {
   timeoutSeconds: 480,
   memory: '512MB'
@@ -856,6 +857,7 @@ async function preApprovalNotificationHandler(notificationCode) {
 
     if (preApproval.status === 'payment_method_change') {
       await pagseguroUnsubscribeFromPlan(preApproval.code);
+      sendUnsubscribedToPlanEmail(userId);
       return notification;
     }
 
@@ -873,6 +875,7 @@ async function preApprovalNotificationHandler(notificationCode) {
       let plan = await getPlan(planId);
       setUserPagseguroPlan(batch, userId, plan, preApproval);
       setUserPlanAndPreApproval(batch, userId, plan, preApproval);
+      sendSubscribedToPlanEmail(userId);
     } else if (
       [
         'cancelled',
@@ -890,6 +893,7 @@ async function preApprovalNotificationHandler(notificationCode) {
         ...preApproval,
         cancelTimestamp: cancelTimestamp
       });
+      sendUnsubscribedToPlanEmail(userId);
     } else if (preApproval.status === 'suspended') {
       let suspendTimestamp = moment().format('x');
       let plan = await getPlan(planId);
@@ -901,6 +905,7 @@ async function preApprovalNotificationHandler(notificationCode) {
         ...preApproval,
         suspendTimestamp: suspendTimestamp
       });
+      sendSubscriptionSuspendedEmail(userId);
     }
 
     return batch.commit().then(() => {
@@ -1319,7 +1324,7 @@ async function createPagseguroRecurrency(
     reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
     sender: {
       name: user.name,
-      email: user.email,
+      email: functions.config().env.id == 'prod' ? user.email : env.sandbox.email,
       hash: data.senderHash,
       phone: {
         areaCode: data.phone.areaCode || user.phone.areaCode,
@@ -1407,7 +1412,7 @@ async function createPagseguroCheckout(
       reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
       sender: {
         name: user.name,
-        email: user.email,
+        email: functions.config().env.id == 'prod' ? user.email : env.sandbox.email,
         hash: data.senderHash,
         phone: {
           areaCode: data.phone.areaCode || user.phone.areaCode,
@@ -1481,6 +1486,52 @@ async function createPagseguroCheckout(
   });
 
   return checkout.data.code;
+}
+
+async function sendSubscribedToPlanEmail(userId) {
+  let user = await getUser(userId);
+  let email = user.email;
+  let subject = "Assinatura Ativada";
+  let body = "Sua assinatura ao Plano Pro foi ativada.";
+  return sendEmail(email, subject, body);
+}
+
+async function sendUnsubscribedToPlanEmail(userId) {
+  let user = await getUser(userId);
+  let email = user.email;
+  let subject = "Assinatura cancelada";
+  let body = "A sua assinatura ao Plano Pro foi cancelada.";
+  return sendEmail(email, subject, body);
+}
+
+async function sendSubscriptionSuspendedEmail(userId) {
+  let user = await getUser(userId);
+  let email = user.email;
+  let subject = "Renovação de assinatura cancelada";
+  let body = "A renovação automática de sua assinatura ao Plano Pro foi cancelada.";
+  return sendEmail(email, subject, body);
+}
+
+function sendEmail(to, subject, body, html) {
+  let url = "smtps://paulorenato.cpb%40gmail.com:"+encodeURIComponent('tlwfoqwmqlrhispz') + "@smtp.gmail.com:465";
+  let transporter = nodemailer.createTransport(url);
+
+  let from = '"Adson Rocha" <email@gmail.com>';
+
+  let email = {
+      from: from,
+      to: to,
+      subject: subject,
+      text: body,
+      html: html
+  };
+
+  return transporter.sendMail(email, (error, info) => {
+    if (error) {
+      return console.log(error);
+    }
+    console.log('Mensagem %s enviada: %s', info.messageId, info.response);
+  });
 }
 
 exports.subscribeUserToPlan = functions.https.onCall((data, context) => {

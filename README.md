@@ -1,4 +1,4 @@
-# cripto-rf-dev
+# criptorium
 
 ## Project setup
 ```

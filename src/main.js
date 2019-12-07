@@ -8,12 +8,14 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import "firebase/functions";
 import "firebase/analytics";
+import { environments } from '@/environments/environment';
 import * as Sentry from '@sentry/browser';
 import * as Integrations from '@sentry/integrations';
 
 Vue.config.productionTip = false
 
 const isProd = process.env.NODE_ENV === "production";
+const firebaseConfig = isProd ? environments.prod.firebaseConfig : environments.dev.firebaseConfig;
 
 moment.locale("pt-br");
 Vue.prototype.$moment = moment;
@@ -31,16 +33,7 @@ new Vue({
   vuetify,
   render: h => h(App),
   created() {
-    firebase.initializeApp({
-      apiKey: "AIzaSyDT6KOzSoGI06arMup0Mj6RYXLX7GRTMLg",
-      authDomain: "cripto-rf-dev.firebaseapp.com",
-      databaseURL: "https://cripto-rf-dev.firebaseio.com",
-      projectId: "cripto-rf-dev",
-      storageBucket: "cripto-rf-dev.appspot.com",
-      messagingSenderId: "235200254503",
-      appId: "1:235200254503:web:7aa45b7387a0891c",
-      measurementId: "G-1DSLGLY6SN"
-    });
+    firebase.initializeApp(firebaseConfig);
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         analytics.setUserId(user.uid);

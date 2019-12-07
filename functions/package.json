@@ -19,6 +19,7 @@
     "firebase-functions": "^3.1.0",
     "moment": "^2.24.0",
     "node-binance-api": "^0.9.5",
+    "nodemailer": "^6.4.0",
     "request": "^2.88.0",
     "xml-js": "^1.6.11",
     "xml2json": "^0.11.2"

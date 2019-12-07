@@ -16,6 +16,7 @@ const envs = {
     }
   },
   sandbox: {
+    email: 'teste@sandbox.pagseguro.com.br',
     transactionsNotificationURL: 'https://ws.sandbox.pagseguro.uol.com.br/v3/transactions/notifications/',
     preApprovalsNotificationURL: 'https://ws.sandbox.pagseguro.uol.com.br/v2/pre-approvals/notifications/',
     providers: {
