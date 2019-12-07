@@ -116,6 +116,7 @@
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
+                <v-btn text color="error" to="/signin">Cancelar</v-btn>
                 <v-btn
                   :disabled="!valid || creating"
                   :loading="creating"
