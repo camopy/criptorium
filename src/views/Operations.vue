@@ -11,7 +11,7 @@
         color="primary"
         @click="onAddOperations"
       >
-        <v-icon>fas fa-plus</v-icon>
+        <v-icon>{{plusSVG}}</v-icon>
       </v-btn>
       <AddOperationDialog :operationDialogTimestamp="operationDialogTimestamp" @close="operationDialogTimestamp = ''"></AddOperationDialog>
     </v-layout>
@@ -22,6 +22,7 @@
 import Operations from "../components/operation/Operations";
 import AddOperationDialog from "../components/operation/AddOperationDialog";
 import { analytics } from "@/main";
+import { mdiPlus } from '@mdi/js';
 
 export default {
   components: {
@@ -30,7 +31,8 @@ export default {
   },
   data: () => ({
     operationDialogTimestamp: "",
-    fab: false
+    fab: false,
+    plusSVG: mdiPlus
   }),
   computed: {
     user() {

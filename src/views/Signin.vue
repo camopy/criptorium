@@ -16,7 +16,7 @@
                         name="email"
                         label="Email"
                         id="email"
-                        prepend-icon="fas fa-envelope"
+                        :prepend-icon="emailSVG"
                         v-model="email"
                         type="email"
                         :error-messages="emailErrors"
@@ -31,7 +31,7 @@
                         name="password"
                         label="Senha"
                         id="password"
-                        prepend-icon="fas fa-lock"
+                        :prepend-icon="passwordSVG"
                         v-model="password"
                         type="password"
                         :error-messages="passwordErrors"
@@ -66,6 +66,8 @@
 import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate'
 import { required, email } from 'vuelidate/lib/validators'
+import { mdiEmail, mdiLockQuestion } from '@mdi/js';
+
 export default {
   mixins: [validationMixin],
   validations: {
@@ -76,7 +78,9 @@ export default {
     valid: true,
     email: "",
     password: "",
-    passwordRules: [v => !!v || "Digite sua senha"]
+    passwordRules: [v => !!v || "Digite sua senha"],
+    emailSVG: mdiEmail,
+    passwordSVG: mdiLockQuestion
   }),
   props: {
     source: String

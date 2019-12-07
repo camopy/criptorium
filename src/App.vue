@@ -12,6 +12,11 @@ import AppSnackbar from "@/components/shared/Snackbar";
     components: {
       AppSnackbar
     },
+    watch: {
+      '$route' (to) {
+        document.title = to.meta.title || 'Criptorium'
+      }
+    },
     computed: {
       userIsAuthenticated() {
         return (

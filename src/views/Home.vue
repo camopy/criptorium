@@ -48,7 +48,7 @@
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" to="/profile" icon>
-            <v-icon>fas fa-user</v-icon>
+            <v-icon>{{accountSVG}}</v-icon>
           </v-btn>
         </template>
         <span>Perfil</span>
@@ -56,7 +56,7 @@
       <v-tooltip bottom>
         <template v-slot:activator="{ on }">
           <v-btn slot="activator" v-on="on" @click="onLogout" icon>
-            <v-icon>fas fa-sign-out-alt</v-icon>
+            <v-icon>{{logoutSVG}}</v-icon>
           </v-btn>
         </template>
         <span>Sair</span>
@@ -73,6 +73,7 @@
 import SubscribePlanStepper from "../components/plan/SubscribePlanStepper";
 import { analytics } from "@/main";
 import Date from "@/mixins/Date";
+import { mdiAccount, mdiFinance, mdiLogout, mdiBankTransfer } from '@mdi/js';
 
 export default {
   components: {
@@ -86,9 +87,11 @@ export default {
     drawer: null,
     subscribePlanStepperDialogTimestamp: "",
     items: [
-      { icon: "fas fa-exchange-alt", text: "Operações", to: "/operations" },
-      { icon: "fas fa-university", text: "Exchanges", to: "/exchanges" }
-    ]
+      { icon: mdiFinance, text: "Operações", to: "/operations" },
+      { icon: mdiBankTransfer, text: "Exchanges", to: "/exchanges" }
+    ],
+    logoutSVG: mdiLogout,
+    accountSVG: mdiAccount
   }),
   computed: {
     paidPlans() {

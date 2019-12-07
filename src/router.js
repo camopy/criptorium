@@ -18,38 +18,59 @@ export default new Router({
       path: '/',
       name: 'home',
       component: Home,
+      meta: {
+        title: 'Criptorium - Home'
+      },
       children: [
         {
           path: "/operations",
           name: "operations",
-          component: Operations
+          component: Operations,
+          meta: {
+            title: 'Criptorium - Operações'
+          },
         },
         {
           path: "/profile",
           name: "profile",
-          component: UserInfo
+          component: UserInfo,
+          meta: {
+            title: 'Criptorium - Perfil'
+          },
         },
         {
           path: "/exchanges",
           name: "exchanges",
-          component: Exchanges
+          component: Exchanges,
+          meta: {
+            title: 'Criptorium - Exchanges'
+          },
         }
       ]
     },
     {
       path: "/signin",
       name: "signin",
-      component: Signin
+      component: Signin,
+      meta: {
+        title: 'Criptorium - Login'
+      },
     },
     {
       path: "/recoverPassword",
       name: "recoverPassword",
-      component: PasswordRecovery
+      component: PasswordRecovery,
+      meta: {
+        title: 'Criptorium - Recuperar senha'
+      },
     },
     {
       path: "/signup",
       name: "signup",
-      component: Signup
+      component: Signup,
+      meta: {
+        title: 'Criptorium - Cadastrar'
+      },
     }
   ]
 })

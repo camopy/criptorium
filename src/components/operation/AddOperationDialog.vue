@@ -22,7 +22,7 @@
                     <v-text-field
                       :value="computedDateFormatted"
                       label="Data da operação"
-                      prepend-icon="fas fa-calendar"
+                      :prepend-icon="calendarSVG"
                       :error-messages="dateErrors"
                       @input="$v.date.$touch()"
                       @blur="$v.date.$touch()"
@@ -48,7 +48,7 @@
                   label="Exchange"
                   :items="exchangeList"
                   :loading="systemExchanges.length === 0"
-                  prepend-icon="fas fa-university"
+                  :prepend-icon="exchangeSVG"
                   v-model="exchange"
                   :error-messages="exchangeErrors"
                   @input="$v.exchange.$touch()"
@@ -61,7 +61,7 @@
                     name="exchangeName"
                     label="Nome da exchange"
                     id="exchangeName"
-                    prepend-icon="fas fa-signature"
+                    :prepend-icon="nameSVG"
                     v-model="exchangeName"
                     :error-messages="exchangeNameErrors"
                     @input="$v.exchangeName.$touch()"
@@ -73,7 +73,7 @@
                     name="exchangeUrl"
                     label="URL da exchange"
                     id="exchangeUrl"
-                    prepend-icon="fas fa-at"
+                    :prepend-icon="webSVG"
                     v-model="exchangeUrl"
                     :error-messages="exchangeUrlErrors"
                     @input="$v.exchangeUrl.$touch()"
@@ -85,7 +85,7 @@
                     name="exchangeCountryCode"
                     label="País da exchange"
                     id="exchangeCountryCode"
-                    prepend-icon="fas fa-globe"
+                    :prepend-icon="countrySVG"
                     v-model="exchangeCountryCode"
                     :error-messages="exchangeCountryCodeErrors"
                     @input="$v.exchangeCountryCode.$touch()"
@@ -99,7 +99,6 @@
                   name="operation"
                   label="Operação"
                   :items="operationList"
-                  prepend-icon="fas fa-exchange-alt"
                   v-model="operation"
                   :error-messages="operationErrors"
                   @input="$v.operation.$touch()"
@@ -112,7 +111,6 @@
                   name="operationType"
                   label="Tipo da operação"
                   :items="operationTypeList"
-                  prepend-icon="fas fa-cash-register"
                   v-model="operationType"
                   :error-messages="operationTypeErrors"
                   @input="$v.operationType.$touch()"
@@ -126,7 +124,7 @@
                       name="baseAsset"
                       label="Criptoativo"
                       id="baseAsset"
-                      prepend-icon="fas fa-coins"
+                      :prepend-icon="coinSVG"
                       v-model="baseAsset"
                       :error-messages="baseAssetErrors"
                       @input="$v.baseAsset.$touch()"
@@ -138,7 +136,7 @@
                       name="quoteAsset"
                       label="Criptoativo de cotação"
                       id="quoteAsset"
-                      prepend-icon="fas fa-coins"
+                      :prepend-icon="coinSVG"
                       v-model="quoteAsset"
                       :error-messages="quoteAssetErrors"
                       @input="$v.quoteAsset.$touch()"
@@ -150,7 +148,7 @@
                       name="baseAssetQty"
                       label="Quantidade"
                       id="baseAssetQty"
-                      prepend-icon="fas fa-balance-scale"
+                      :prepend-icon="amountSVG"
                       v-model="baseAssetQty"
                       :error-messages="baseAssetQtyErrors"
                       @input="$v.baseAssetQty.$touch()"
@@ -162,7 +160,7 @@
                       name="quoteAssetQty"
                       label="Valor"
                       id="quoteAssetQty"
-                      prepend-icon="fas fa-balance-scale"
+                      :prepend-icon="cashSVG"
                       v-model="quoteAssetQty"
                       :error-messages="quoteAssetQtyErrors"
                       @input="$v.quoteAssetQty.$touch()"
@@ -174,7 +172,7 @@
                       name="commissionAsset"
                       label="Taxa (criptoativo)"
                       id="commissionAsset"
-                      prepend-icon="fas fa-coins"
+                      :prepend-icon="coinSVG"
                       v-model="commissionAsset"
                     ></v-text-field>
                   </v-flex>
@@ -183,7 +181,7 @@
                       name="commission"
                       label="Valor da taxa"
                       id="commission"
-                      prepend-icon="fas fa-balance-scale"
+                      :prepend-icon="cashSVG"
                       v-model="commission"
                     ></v-text-field>
                   </v-flex>
@@ -212,6 +210,7 @@ import Date from "@/mixins/Date";
 import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate'
 import { required } from 'vuelidate/lib/validators'
+import { mdiCalendar, mdiWeb, mdiRenameBox, mdiCounter, mdiBankTransfer, mdiCoin, mdiEarth, mdiCash } from '@mdi/js';
 
 export default {
   props: {
@@ -394,7 +393,15 @@ export default {
     quoteAssetQty: "",
     commissionAsset: "",
     commission: "",
-    dateMenu: false
+    dateMenu: false,
+    exchangeSVG: mdiBankTransfer,
+    countrySVG: mdiEarth,
+    coinSVG: mdiCoin,
+    cashSVG: mdiCash,
+    calendarSVG: mdiCalendar,
+    amountSVG: mdiCounter,
+    nameSVG: mdiRenameBox,
+    webSVG: mdiWeb
   }),
 
   methods: {

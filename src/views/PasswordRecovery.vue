@@ -16,7 +16,7 @@
                         name="email"
                         label="Email"
                         id="email"
-                        prepend-icon="fas fa-envelope"
+                        :prepend-icon="emailSVG"
                         v-model="email"
                         type="email"
                         :error-messages="emailErrors"
@@ -50,6 +50,8 @@
 import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate'
 import { required, email } from 'vuelidate/lib/validators'
+import { mdiEmail } from '@mdi/js';
+
 export default {
   mixins: [validationMixin],
   validations: {
@@ -57,7 +59,8 @@ export default {
   },
   data: () => ({
     valid: true,
-    email: ""
+    email: "",
+    emailSVG: mdiEmail
   }),
   props: {
     source: String

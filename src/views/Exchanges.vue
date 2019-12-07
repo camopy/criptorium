@@ -11,7 +11,7 @@
             color="primary"
             @click="onAddExchange"
           >
-            <v-icon>fas fa-plus</v-icon>
+            <v-icon>{{plusSVG}}</v-icon>
           </v-btn>
       <AddExchangeDialog
         :exchangeDialogTimestamp="exchangeDialogTimestamp"
@@ -26,6 +26,7 @@ import Exchanges from "../components/exchange/Exchanges";
 import AddExchangeDialog from "../components/exchange/AddExchangeDialog";
 import Date from "@/mixins/Date";
 import { analytics } from "@/main";
+import { mdiPlus } from '@mdi/js';
 
 export default {
   components: {
@@ -34,7 +35,8 @@ export default {
   },
   mixins: [Date],
   data: () => ({
-    exchangeDialogTimestamp: ""
+    exchangeDialogTimestamp: "",
+    plusSVG: mdiPlus
   }),
   computed: {
     user() {

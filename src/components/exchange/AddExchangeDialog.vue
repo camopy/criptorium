@@ -12,7 +12,7 @@
                   name="exchange"
                   label="Exchange"
                   :items="exchangeList"
-                  prepend-icon="fas fa-university"
+                  :prepend-icon="exchangeSVG"
                   v-model="exchange"
                   :error-messages="exchangeErrors"
                   @input="$v.exchange.$touch()"
@@ -24,7 +24,7 @@
                   name="apiKey"
                   label="API key"
                   id="apiKey"
-                  prepend-icon="fas fa-key"
+                  :prepend-icon="apiKeySVG"
                   v-model="apiKey"
                   :error-messages="apiKeyErrors"
                   @input="$v.apiKey.$touch()"
@@ -36,7 +36,7 @@
                   name="privateKey"
                   label="Secret key"
                   id="privateKey"
-                  prepend-icon="fas fa-key"
+                  :prepend-icon="secretKeySVG"
                   v-model="privateKey"
                   :error-messages="privateKeyErrors"
                   @input="$v.privateKey.$touch()"
@@ -67,7 +67,8 @@
 import { validationMixin } from 'vuelidate'
 import { required } from 'vuelidate/lib/validators'
 import Date from "@/mixins/Date";
-import { analytics } from "@/main"
+import { analytics } from "@/main";
+import { mdiBankTransfer, mdiKey, mdiKeyOutline } from "@mdi/js";
 
 export default {
   props: {
@@ -141,7 +142,10 @@ export default {
     exchange: "",
     apiKey: "",
     privateKey: "",
-    exchangeId: ""
+    exchangeId: "",
+    exchangeSVG: mdiBankTransfer,
+    apiKeySVG: mdiKey,
+    secretKeySVG: mdiKeyOutline
   }),
 
   methods: {

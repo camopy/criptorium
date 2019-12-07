@@ -28,7 +28,7 @@
                     <v-text-field
                       :value="computedDateFormatted"
                       label="Mês das operações"
-                      prepend-icon="fas fa-calendar"
+                      :prepend-icon="calendarSVG"
                       clearable
                       @click:clear="filterOperationsFromFirestore"
                       v-on="on"
@@ -99,7 +99,7 @@
                 </v-layout>
                 <v-layout row>
                   <v-spacer />
-                  <v-btn v-if="operation.addedByUser" text icon small @click="onDeleteOperation(operation)"><v-icon>fas fa-trash</v-icon></v-btn>
+                  <v-btn v-if="operation.addedByUser" text icon small @click="onDeleteOperation(operation)"><v-icon>{{deleteSVG}}</v-icon></v-btn>
                 </v-layout>
               </v-expansion-panel-content>
             </v-expansion-panel>
@@ -125,6 +125,7 @@
 import Date from "@/mixins/Date";
 import { analytics } from "@/main";
 import GenerateOperationsTextFileDialog from "@/components/operation/GenerateOperationsTextFileDialog";
+import { mdiCalendar, mdiDelete } from '@mdi/js';
 
 export default {
   components: {
@@ -161,7 +162,9 @@ export default {
     bottom: false,
     date: "",
     dateMenu: false,
-    generateOperationsTextFileDialog: false
+    generateOperationsTextFileDialog: false,
+    calendarSVG: mdiCalendar,
+    deleteSVG: mdiDelete
   }),
   computed: {
     user() {

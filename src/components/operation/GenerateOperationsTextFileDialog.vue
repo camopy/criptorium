@@ -22,7 +22,7 @@
                     <v-text-field
                       :value="computedDateFormatted"
                       label="Mês das operações"
-                      prepend-icon="fas fa-calendar"
+                      :prepend-icon="calendarSVG"
                       :rules="dateRules"
                       required
                       mask="##/##/####"
@@ -62,6 +62,8 @@
 <script>
 import Date from "@/mixins/Date";
 import { analytics } from "@/main";
+import { mdiCalendar } from '@mdi/js';
+
 export default {
   mixins: [Date],
   props: {
@@ -94,7 +96,8 @@ export default {
       v => !!v || "Data é obrigatório"
       // v => (v && v.length <= 10) || 'Name must be less than 10 characters'
     ],
-    dateMenu: false
+    dateMenu: false,
+    calendarSVG: mdiCalendar
   }),
 
   methods: {

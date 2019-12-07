@@ -16,7 +16,7 @@
                         name="name"
                         label="Nome"
                         id="name"
-                        prepend-icon="fas fa-user"
+                        :prepend-icon="accountSVG"
                         v-model="name"
                         :error-messages="nameErrors"
                         @input="$v.name.$touch()"
@@ -29,7 +29,7 @@
                         name="email"
                         label="Email"
                         id="email"
-                        prepend-icon="fas fa-envelope"
+                        :prepend-icon="emailSVG"
                         v-model="email"
                         type="email"
                         :error-messages="emailErrors"
@@ -42,7 +42,7 @@
                         name="cpf"
                         label="CPF"
                         id="cpf"
-                        prepend-icon="fas fa-id-card"
+                        :prepend-icon="cpfSVG"
                         v-model="cpf"
                         :error-messages="cpfErrors"
                         @input="$v.cpf.$touch()"
@@ -66,7 +66,7 @@
                           <v-text-field
                             :value="computedDateFormatted"
                             label="Data de nascimento"
-                            prepend-icon="fas fa-calendar"
+                            :prepend-icon="birthdateSVG"
                             :error-messages="birthdayErrors"
                             readonly
                             @input="$v.birthday.$touch()"
@@ -90,7 +90,7 @@
                         name="password"
                         label="Senha"
                         id="password"
-                        prepend-icon="fas fa-lock"
+                        :prepend-icon="passwordSVG"
                         v-model="password"
                         type="password"
                         :error-messages="passwordErrors"
@@ -103,7 +103,7 @@
                         name="confirmPassword"
                         label="Confirme a senha"
                         id="confirmPassword"
-                        prepend-icon="fas fa-lock"
+                        :prepend-icon="passwordSVG"
                         v-model="confirmPassword"
                         type="password"
                         :error-messages="confirmPasswordErrors"
@@ -137,6 +137,7 @@ import { mask } from "vue-the-mask";
 import { analytics } from "@/main";
 import { validationMixin } from 'vuelidate';
 import { required, email } from 'vuelidate/lib/validators';
+import { mdiAccount, mdiEmail, mdiAccountCardDetails, mdiCalendar, mdiLockQuestion } from '@mdi/js';
 
 export default {
   directives: {
@@ -160,7 +161,12 @@ export default {
     email: "",
     password: "",
     confirmPassword: "",
-    dateMenu: false
+    dateMenu: false,
+    accountSVG: mdiAccount,
+    emailSVG: mdiEmail,
+    cpfSVG: mdiAccountCardDetails,
+    birthdateSVG: mdiCalendar,
+    passwordSVG: mdiLockQuestion
   }),
   computed: {
     nameErrors() {
