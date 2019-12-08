@@ -5,7 +5,7 @@ const Binance = require('binance-api-node').default;
 const moment = require('moment');
 const xmlParser = require('xml-js');
 const axios = require('axios');
-const env = functions.config().env;
+const pagseguro = functions.config().pagseguro;
 const isProd = process.env.NODE_ENV === "production";
 const nodemailer = require('nodemailer');
 const runtimeOpts = {
@@ -390,10 +390,10 @@ function formatDate(date) {
 function setPagseguroSession() {
   return axios({
     method: 'POST',
-    url: env.pagseguro.api.providers.session,
+    url: pagseguro.api.providers.session,
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     }
   }).then((response) => {
     return xmlParser.xml2js(response.data, { compact: true }).session.id._text;
@@ -403,7 +403,7 @@ function setPagseguroSession() {
 function getPagseguroCardBrand(sessionId, cardBin) {
   return axios({
     method: 'GET',
-    url: env.pagseguro.api.providers.cardbrand,
+    url: pagseguro.api.providers.cardbrand,
     params: {
       tk: sessionId,
       creditCard: cardBin
@@ -422,7 +422,7 @@ function getPagseguroCardBrand(sessionId, cardBin) {
 function getPagseguroCardToken(sessionId, card, value) {
   return axios({
     method: 'POST',
-    url: env.pagseguro.api.providers.cardtoken,
+    url: pagseguro.api.providers.cardtoken,
     params: {
       sessionId: sessionId,
       amount: value,
@@ -583,10 +583,10 @@ function setUserPagseguroTransaction(userId, transaction, batch) {
 function pagseguroUnsubscribeFromPlan(preApprovalCode) {
   return axios({
     method: 'PUT',
-    url: env.pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/cancel',
+    url: pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/cancel',
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
@@ -598,10 +598,10 @@ function pagseguroUnsubscribeFromPlan(preApprovalCode) {
 function pagseguroSuspendFromPlan(preApprovalCode) {
   return axios({
     method: 'PUT',
-    url: env.pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/status',
+    url: pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/status',
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
@@ -614,10 +614,10 @@ function pagseguroSuspendFromPlan(preApprovalCode) {
 function pagseguroResubscribeToPlan(preApprovalCode) {
   return axios({
     method: 'PUT',
-    url: env.pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/status',
+    url: pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/status',
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+json;charset=ISO-8859-1',
@@ -770,10 +770,10 @@ function pagseguroPaymentTypeBrand(code) {
 function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
   return axios({
     method: 'GET',
-    url: env.pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/payment-orders',
+    url: pagseguro.api.providers.preapproval + '/' + preApprovalCode + '/payment-orders',
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
@@ -784,8 +784,7 @@ function getPagseguroPreApprovalPaymentOrders(preApprovalCode) {
   });
 }
 
-// eslint-disable-next-line no-unused-vars
-function createPagseguroPlan() {
+function createPagseguroPlan(plan) {
   let planData = {
     _declaration: {
       _attributes: {
@@ -795,22 +794,16 @@ function createPagseguroPlan() {
       }
     },
     preApprovalRequest: {
-      preApproval: {
-        name: 'Pro Anual',
-        charge: 'AUTO',
-        reference: 'pro-yearly',
-        period: 'YEARLY',
-        amountPerPayment: '165.00'
-      }
+      preApproval: plan
     }
   };
 
   axios({
     method: 'POST',
-    url: env.pagseguro.api.providers.preapproval + '/request/',
+    url: pagseguro.api.providers.preapproval + '/request/',
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v3+xml;charset=ISO-8859-1',
@@ -822,13 +815,36 @@ function createPagseguroPlan() {
   });
 }
 
+// eslint-disable-next-line no-unused-vars
+function createPagseguroPlans() {
+  let yearlyPlan = {
+    name: 'Pro Anual',
+    charge: 'AUTO',
+    reference: 'pro-yearly',
+    period: 'YEARLY',
+    amountPerPayment: '165.00'
+  };
+
+  createPagseguroPlan(yearlyPlan);
+
+  let monthlyPlan = {
+    name: 'Pro Mensal',
+    charge: 'AUTO',
+    reference: 'pro-monthly',
+    period: 'MONTHLY',
+    amountPerPayment: '15.00'
+  }
+
+  createPagseguroPlan(monthlyPlan);
+}
+
 function getPagseguroPreApprovalNotification(notificationCode) {
   return axios({
     method: 'GET',
-    url: env.pagseguro.api.preapprovalsnotificationurl + notificationCode,
+    url: pagseguro.api.preapprovalsnotificationurl + notificationCode,
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       'content-type': 'application/json'
@@ -918,10 +934,10 @@ async function preApprovalNotificationHandler(notificationCode) {
 function getPagseguroTransactionNotification(notificationCode) {
   return axios({
     method: 'GET',
-    url: env.pagseguro.api.transactionsnotificationurl + notificationCode,
+    url: pagseguro.api.transactionsnotificationurl + notificationCode,
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       'content-type': 'application/json'
@@ -1323,7 +1339,7 @@ async function createPagseguroRecurrency(
     reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
     sender: {
       name: user.name,
-      email: isProd ? user.email : env.pagseguro.api.email,
+      email: isProd ? user.email : pagseguro.api.email,
       hash: data.senderHash,
       phone: {
         areaCode: data.phone.areaCode || user.phone.areaCode,
@@ -1372,10 +1388,10 @@ async function createPagseguroRecurrency(
 
   let preApproval = await axios({
     method: 'POST',
-    url: env.pagseguro.api.providers.preapproval,
+    url: pagseguro.api.providers.preapproval,
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       accept: 'application/vnd.pagseguro.com.br.v1+json;charset=ISO-8859-1',
@@ -1387,6 +1403,7 @@ async function createPagseguroRecurrency(
   return preApproval.data.code;
 }
 
+// eslint-disable-next-line no-unused-vars
 async function createPagseguroCheckout(
   plan,
   user,
@@ -1395,7 +1412,6 @@ async function createPagseguroCheckout(
   cardToken,
   cardHolder
 ) {
-  console.log('Card token', cardToken);
   let payment = {
     _declaration: {
       _attributes: {
@@ -1411,7 +1427,7 @@ async function createPagseguroCheckout(
       reference: user.id + '_' + plan.id + '_' + subscribeTimestamp,
       sender: {
         name: user.name,
-        email: isProd ? user.email : env.pagseguro.api.email,
+        email: isProd ? user.email : pagseguro.api.email,
         hash: data.senderHash,
         phone: {
           areaCode: data.phone.areaCode || user.phone.areaCode,
@@ -1473,10 +1489,10 @@ async function createPagseguroCheckout(
 
   let checkout = await axios({
     method: 'POST',
-    url: env.pagseguro.api.providers.checkouttransaction,
+    url: pagseguro.api.providers.checkouttransaction,
     params: {
-      email: env.pagseguro.auth.email,
-      token: env.pagseguro.auth.token
+      email: pagseguro.auth.email,
+      token: pagseguro.auth.token
     },
     headers: {
       'Content-Type': 'application/xml;charset=ISO-8859-1'
