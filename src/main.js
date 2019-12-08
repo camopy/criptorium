@@ -12,20 +12,20 @@ import { environments } from '@/environments/environment';
 import * as Sentry from '@sentry/browser';
 import * as Integrations from '@sentry/integrations';
 
-Vue.config.productionTip = false
-
-const isProd = process.env.NODE_ENV === "production";
-const firebaseConfig = isProd ? environments.prod.firebaseConfig : environments.dev.firebaseConfig;
-
 moment.locale("pt-br");
 Vue.prototype.$moment = moment;
 
+const isProd = process.env.NODE_ENV === "production";
+
 if(isProd) {
   Sentry.init({
-    dsn: 'https://9b0ae9d17fc74821acb9bb1cec6b5949@sentry.io/1784831',
+    dsn: environments.prod.sentry.dsn,
     integrations: [new Integrations.Vue({Vue, attachProps: true})],
   });
 }
+
+const firebaseConfig = isProd ? environments.prod.firebaseConfig : environments.dev.firebaseConfig;
+Vue.config.productionTip = !isProd;
 
 new Vue({
   router,

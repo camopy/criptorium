@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "criptorium-f8b60"
+    "default": "criptorium-f8b60",
+    "dev": "cripto-rf-dev"
   }
 }

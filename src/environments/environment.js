@@ -1,5 +1,8 @@
 export const environments = {
   prod: {
+    sentry: {
+      dsn: "https://9b0ae9d17fc74821acb9bb1cec6b5949@sentry.io/1784831"
+    },
     firebaseConfig: {
       apiKey: "AIzaSyAjFUSyG8cRbtr3ZMbT7ILxZHtZ_OM6zrc",
       authDomain: "criptorium-f8b60.firebaseapp.com",
