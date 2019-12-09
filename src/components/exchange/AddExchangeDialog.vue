@@ -166,7 +166,6 @@ export default {
           .then(() => {
             analytics.logEvent("firestoreCall", {category: "exchange", operation: "set", description: 'Add exchange to firebase', duration: Number(this.timestamp()) - Number(addExchangeTimestamp)});
             this.dialog = "";
-            console.log('Exchange added');
           });
       }
     }

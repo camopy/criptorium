@@ -218,7 +218,6 @@ export default {
       return this.$store.getters.creating;
     },
     computedDateFormatted() {
-      console.log(this.birthday);
       return this.formatDate(this.birthday, "YYYY-MM-DD");
     }
   },

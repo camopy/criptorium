@@ -36,7 +36,6 @@ export default {
           type: "success",
           message: "Usuário criado com sucesso"
         });
-        console.log(response.data);
         commit('setUser', response.data);
         commit('setCreating', false);
         analytics.logEvent("sign_up", {category: "singup"});

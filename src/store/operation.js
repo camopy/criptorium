@@ -86,7 +86,6 @@ export default {
         .then(function() {
           commit('setCreating', false);
           commit('setSnackbarContent', {type: "success", message: "Operação adicionada com sucesso!"});
-          console.log('Operation added');
         })
         .catch(function(error) {
           console.error('Error adding operation: ', error);
@@ -107,7 +106,6 @@ export default {
         .then(function() {
           commit('setDeleting', false);
           commit('setSnackbarContent', {type: "success", message: "Operação deletada com sucesso!"});
-          console.log('Operation deleted');
         })
         .catch(function(error) {
           console.error('Error deleting operation: ', error);
