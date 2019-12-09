@@ -1699,7 +1699,7 @@ exports.checkUserPlanValidDate = functions.https.onCall(
       let user = await getUser(userId);
 
       if (
-        user.preApproval.status === 'suspended' &&
+        user.preApproval && user.preApproval.status === 'suspended' &&
         Number(moment(Number(user.preApproval.lastEventTimestamp))
           .add(1, 'M')
           .format('x')) < Number(moment().format('x'))
