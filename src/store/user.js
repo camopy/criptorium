@@ -26,7 +26,7 @@ export default {
     }
   },
   actions: {
-    async signUserUp({ commit }, payload) {
+    async signUserUp({ commit, dispatch }, payload) {
       commit('setCreating', true);
 
       try {
@@ -36,7 +36,9 @@ export default {
           type: "success",
           message: "Usuário criado com sucesso"
         });
-        commit('setUser', response.data);
+
+        dispatch("signUserIn", payload);
+
         commit('setCreating', false);
         analytics.logEvent("sign_up", {category: "singup"});
       }
