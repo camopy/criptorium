@@ -30,7 +30,7 @@ export default {
       commit('setCreating', true);
 
       try {
-        let response = await functions.httpsCallable("signUserUp")(payload);
+        await functions.httpsCallable("signUserUp")(payload);
 
         commit('setSnackbarContent', {
           type: "success",
