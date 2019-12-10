@@ -6,6 +6,7 @@ const moment = require('moment');
 const xmlParser = require('xml-js');
 const axios = require('axios');
 const pagseguro = functions.config().pagseguro;
+const godaddy = functions.config().godaddy;
 const isProd = process.env.NODE_ENV === "production";
 const nodemailer = require('nodemailer');
 const runtimeOpts = {
@@ -1528,10 +1529,10 @@ async function sendSubscriptionSuspendedEmail(userId) {
 }
 
 function sendEmail(to, subject, body, html) {
-  let url = "smtps://paulorenato.cpb%40gmail.com:"+encodeURIComponent('tlwfoqwmqlrhispz') + "@smtp.gmail.com:465";
+  let url = "smtps://" + encodeURIComponent(godaddy.email) + ":" + encodeURIComponent(godaddy.password) + "@" + encodeURIComponent(godaddy.smtp) + ":" + encodeURIComponent(godaddy.port);
   let transporter = nodemailer.createTransport(url);
 
-  let from = '"Adson Rocha" <email@gmail.com>';
+  let from = '"Criptorium" <contato@criptorium.com.br>';
 
   let email = {
       from: from,

@@ -20,7 +20,7 @@
                   </v-flex>
                 <v-flex xs12 sm5>
                   <div class="display-1 text--primary">Assinatura</div>
-                  <v-btn v-if="user.preApproval.status === 'suspended'" color="primary" @click="onReactivatePlan">Reativar</v-btn>
+                  <v-btn v-if="user.preApproval && user.preApproval.status === 'suspended'" color="primary" @click="onReactivatePlan">Reativar</v-btn>
                   <v-btn text color="error" v-else-if="user.plan.type === 'paid'" @click="onCancelPlan">Cancelar</v-btn>
                 </v-flex>
                 <v-flex xs12 sm7>
@@ -28,7 +28,7 @@
                     class="text--primary"
                   >Plano {{user.plan.name}}{{user.plan.type === "free" ? "" : user.plan.period === "yearly" ? " - Anual" : " - Mensal"}}</div>
                   <div v-if="user.plan.type === 'paid'">R${{user.plan.period === "monthly" ? user.plan.price : user.plan.price/12}}/mês</div>
-                  <div v-if="user.preApproval.status === 'suspended'">Sua assinatura vale até {{planDateLimit}}</div>
+                  <div v-if="user.preApproval && user.preApproval.status === 'suspended'">Sua assinatura vale até {{planDateLimit}}</div>
                 </v-flex>
                 <v-flex xs12>
                   <v-divider class="my-3"></v-divider>
@@ -47,8 +47,8 @@
         </v-card>
       </v-flex>
     </v-layout>
-    <CancelPlanDialog :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
-    <ReactivatePlanDialog :visible="reactivatePlanDialog" @close="reactivatePlanDialog = false"/>
+    <CancelPlanDialog v-if="user.preApproval" :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
+    <ReactivatePlanDialog v-if="user.preApproval" :visible="reactivatePlanDialog" @close="reactivatePlanDialog = false"/>
   </v-container>
 </template>
 
@@ -76,8 +76,12 @@ export default {
       return this.formatDate(this.$store.getters.user.birthday);
     },
     planDateLimit() {
-      let lastEventTimestamp = this.$store.getters.user.preApproval.lastEventTimestamp;
-      return this.formatDate(this.moment(lastEventTimestamp).add(1, "M").format("x"));
+      let preApproval = this.$store.getters.user.preApproval;
+      if(preApproval) {
+        let lastEventTimestamp = preApproval.lastEventTimestamp;
+        return this.formatDate(this.moment(lastEventTimestamp).add(1, "M").format("x"));
+      }
+      return "";
     }
   },
   methods: {

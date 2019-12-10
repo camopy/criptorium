@@ -6,7 +6,13 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "deploy:prod": "firebase use default & firebase deploy",
+    "deploy:dev": "firebase use dev & firebase deploy",
+    "deploy:prod:functions": "firebase use default & firebase deploy --only functions",
+    "deploy:dev:functions": "firebase use dev & firebase deploy --only functions",
+    "deploy:prod:hosting": "firebase use default & firebase deploy --except functions",
+    "deploy:dev:hosting": "firebase use dev & firebase deploy --except functions"
   },
   "dependencies": {
     "@sentry/browser": "^5.7.1",
