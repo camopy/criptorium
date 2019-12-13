@@ -54,8 +54,9 @@ export default {
       return this.$store.getters.updating;
     },
     planDateLimit() {
+      let userPlan = this.$store.getters.user.plan;
       let lastEventTimestamp = this.$store.getters.user.preApproval.lastEventTimestamp;
-      return this.moment(lastEventTimestamp).add(1, "M").format("x");
+      return this.moment(lastEventTimestamp).add(1, userPlan.period === "monthly" ? "M" : "Y").format("x");
     }
   },
 

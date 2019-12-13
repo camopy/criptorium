@@ -47,8 +47,8 @@
         </v-card>
       </v-flex>
     </v-layout>
-    <CancelPlanDialog v-if="user.preApproval" :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
-    <ReactivatePlanDialog v-if="user.preApproval" :visible="reactivatePlanDialog" @close="reactivatePlanDialog = false"/>
+    <CancelPlanDialog v-if="user && user.preApproval" :visible="cancelPlanDialog" @close="cancelPlanDialog = false"/>
+    <ReactivatePlanDialog v-if="user && user.preApproval" :visible="reactivatePlanDialog" @close="reactivatePlanDialog = false"/>
   </v-container>
 </template>
 
@@ -76,9 +76,8 @@ export default {
       return this.formatDate(this.$store.getters.user.birthday);
     },
     planDateLimit() {
-      let preApproval = this.$store.getters.user.preApproval;
-      if(preApproval) {
-        let lastEventTimestamp = preApproval.lastEventTimestamp;
+      if(this.$store.getters.user && this.$store.getters.user.preApproval) {
+        let lastEventTimestamp = this.$store.getters.user.preApproval.lastEventTimestamp;
         return this.formatDate(this.moment(lastEventTimestamp).add(1, "M").format("x"));
       }
       return "";
