@@ -7,7 +7,7 @@ const xmlParser = require('xml-js');
 const axios = require('axios');
 const pagseguro = functions.config().pagseguro;
 const godaddy = functions.config().godaddy;
-const isProd = process.env.NODE_ENV === "production";
+const isProd = functions.config().env.id === "prod";
 const nodemailer = require('nodemailer');
 const runtimeOpts = {
   timeoutSeconds: 480,

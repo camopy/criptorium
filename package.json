@@ -21,7 +21,7 @@
     "core-js": "^2.6.5",
     "dns": "^0.2.2",
     "file-saver": "^2.0.2",
-    "firebase": "^7.5.2",
+    "firebase": "^7.6.0",
     "moment": "^2.24.0",
     "pug": "^2.0.4",
     "pug-plain-loader": "^1.0.0",
